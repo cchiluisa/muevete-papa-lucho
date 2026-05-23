@@ -41,10 +41,14 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Inicializar el buscador de direcciones gratuito (OpenStreetMap)
-geolocator = Nominatim(user_agent="muevete_papa_lucho_app")
+# Inicializar el buscador de direcciones (OpenStreetMap - Gratuito)
+@st.cache_resource
+def obtener_geolocalizador():
+    return Nominatim(user_agent="muevete_papa_lucho_local")
 
-# --- INICIALIZACIÓN DE DATOS EN MEMORIA ---
+geolocator = obtener_geolocalizador()
+
+# --- INICIALIZACIÓN DE DATOS EN MEMORIA VIVA ---
 if 'historial_viajes' not in st.session_state: 
     st.session_state.historial_viajes = []
 
@@ -66,66 +70,64 @@ telefono_pasajero = st.text_input("Teléfono de Contacto 📞", placeholder="Ej:
 st.divider()
 st.markdown("### 🗺️ ¿A dónde nos movemos hoy?")
 
-# --- BUSCADOR ASISTIDO DE DIRECCIÓN INICIAL ---
-origen_input = st.text_input("📍 Punto de recogida (Escribe y presiona Enter para buscar)", placeholder="Ej: Gare de Tarascon")
-origen_seleccionado = "No seleccionado"
+# Buscador asistido para el punto de recogida
+origen_input = st.text_input("📍 ¿Dónde te recogemos? (Escribe y presiona Enter)", placeholder="Ej: Gare de Tarascon")
+origen_final = origen_input
+
 if origen_input:
     try:
-        # Busca en tiempo real las direcciones que coincidan en la región
-        locations = geolocator.geocode(origen_input, exactly_one=False, limit=3, country_codes="fr")
-        if locations:
-            opciones_origen = [loc.address for loc in locations]
-            origen_seleccionado = st.selectbox("🎯 Confirma tu ubicación exacta encontrada:", opciones_origen)
-        else:
-            st.warning("🔍 No encontramos esa dirección exacta, pero puedes continuar.")
-            origen_seleccionado = origen_input
+        # Busca texto coincidente limitado a Francia para mayor precisión local
+        ubicaciones = geolocator.geocode(origen_input, exactly_one=False, limit=3, country_codes="fr")
+        if ubicaciones:
+            lista_direcciones = [u.address for u in ubicaciones]
+            origen_final = st.selectbox("🎯 Confirma la dirección exacta de recogida:", lista_direcciones)
     except:
-        origen_seleccionado = origen_input
+        origen_final = origen_input
 
-# --- BUSCADOR ASISTIDO DE DESTINO FINAL ---
-destino_input = st.text_input("🏁 ¿A qué dirección vas? (Escribe y presiona Enter)", placeholder="Ej: Mairie de Beaucaire")
-destino_seleccionado = "No seleccionado"
+# Buscador asistido para el destino final
+destino_input = st.text_input("🏁 ¿A qué dirección vas? (Escribe y presiona Enter)", placeholder="Ej: Chateau de Beaucaire")
+destino_final = destino_input
+
 if destino_input:
     try:
-        locations_dest = geolocator.geocode(destino_input, exactly_one=False, limit=3, country_codes="fr")
-        if locations_dest:
-            opciones_destino = [loc.address for loc in locations_dest]
-            destino_seleccionado = st.selectbox("🎯 Confirma tu destino exacto encontrado:", opciones_destino)
-        else:
-            st.warning("🔍 No encontramos la dirección exacta, pero puedes continuar.")
-            destino_seleccionado = destino_input
+        ubicaciones_dest = geolocator.geocode(destino_input, exactly_one=False, limit=3, country_codes="fr")
+        if ubicaciones_dest:
+            lista_direcciones_dest = [u.address for u in ubicaciones_dest]
+            destino_final = st.selectbox("🎯 Confirma tu destino exacto:", lista_direcciones_dest)
     except:
-        destino_seleccionado = destino_input
+        destino_final = destino_input
 
 st.write("") 
 
 if st.button("🚀 SOLICITAR VIAJE NOW"):
     if not nombre_pasajero.strip() or not telefono_pasajero.strip():
         st.error("⚠️ Por favor, introduce tu nombre y teléfono de contacto.")
-    elif origen_seleccionado == "No seleccionado" or destino_seleccionado == "No seleccionado":
-        st.error("⚠️ Por favor, introduce y confirma el origen y el destino.")
+    elif not origen_final.strip() or not destino_final.strip():
+        st.error("⚠️ Por favor, dinos el punto de recogida y el destino.")
     else:
-        # Filtrar conductores que estén totalmente libres
+        # Filtrar conductores libres
         libres = [c for c in st.session_state.conductores if c["estado"] == "🟢 Disponible"]
         
         if libres:
             conductor_asignado = libres[0]
-            # El conductor cambia automáticamente a estado "Solicitado"
+            # Cambia el estado inicial a asignado
             conductor_asignado["estado"] = "🟡 Viaje Asignado"
             
-            # Guardar registro de la carrera en la base central
+            # Cortamos el texto largo de la dirección para el registro interno
+            dir_origen_corta = origen_final.split(",")[0]
+            dir_destino_corta = destino_final.split(",")[0]
+            
             registro_viaje = {
                 "Pasajero": nombre_pasajero,
                 "Teléfono": telefono_pasajero,
-                "Origen": origen_seleccionado.split(",")[0], # Guarda el nombre corto del lugar
-                "Destino": destino_seleccionado.split(",")[0],
-                "Conductor": conductor_asignado["nombre"],
-                "Estado Carrera": "Asignado"
+                "Origen": dir_origen_corta,
+                "Destino": dir_destino_corta,
+                "Conductor": conductor_asignado["nombre"]
             }
             st.session_state.historial_viajes.append(registro_viaje)
             
-            # WhatsApp abre con los datos resumidos para el acuerdo rápido
-            texto_base = f"Hola {conductor_asignado['nombre']}, necesito un viaje desde {origen_seleccionado.split(',')[0]} hasta {destino_seleccionado.split(',')[0]}."
+            # Formatear enlace de WhatsApp limpio
+            texto_base = f"Hola {conductor_asignado['nombre']}, necesito un viaje desde {dir_origen_corta} hasta {dir_destino_corta}."
             texto_codificado = urllib.parse.quote(texto_base)
             url_whatsapp = f"https://wa.me/{conductor_asignado['telefono']}?text={texto_codificado}"
             
@@ -136,7 +138,7 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
                 </div>
             """, unsafe_allow_html=True)
             
-            st.info("🤝 Pulsa abajo para abrir WhatsApp, el conductor te dará el precio de inmediato.")
+            st.info("🤝 Pulsa el botón de abajo para hablar con tu conductor y acordar el precio.")
             
             st.markdown(f"""
                 <a href="{url_whatsapp}" target="_blank">
@@ -148,7 +150,7 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
         else:
             st.warning("Todos los conductores están ocupados en este momento. Inténtalo de nuevo en unos minutos.")
 
-# --- PANEL CENTRAL DE ADMINISTRACIÓN Y CONTROL DE CONDUCTORES ---
+# --- PANEL CENTRAL DE ADMINISTRACIÓN ---
 st.write("")
 with st.expander("⚙️ Consola interna de Papá Lucho"):
     st.subheader("➕ Registrar Nuevo Conductor")
@@ -160,21 +162,21 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
             if c_nombre.strip() and c_telefono.strip():
                 nuevo_c = {"nombre": c_nombre, "estado": "🟢 Disponible", "telefono": c_telefono.strip().replace("+", "")}
                 st.session_state.conductores.append(nuevo_c)
-                st.success(f"¡Conductor {c_nombre} integrado!")
+                st.success(f"¡Conductor {c_nombre} integrado con éxito!")
                 st.rerun()
 
     st.divider()
     
-    # SECCIÓN CRÍTICA: BOTONES DE INICIAR Y FINALIZAR VIAJE PARA EL CONDUCTOR
-    st.subheader("🚗 Control de Viajes en Tiempo Real")
+    # CONTROL INTERACTIVO DE ESTADOS PARA EL CHOFER
+    st.subheader("🚗 Control de Viajes de la Flota")
     for c in st.session_state.conductores:
         col1, col2, col3 = st.columns([2, 1.5, 1.5])
         
         with col1:
-            st.write(f"*{c['nombre']}* ({c['estado']})")
+            st.write(f"*{c['nombre']}*\n\n({c['estado']})")
         
         with col2:
-            # Botón para iniciar el viaje físico
+            # Activo si el viaje fue solicitado
             if c["estado"] == "🟡 Viaje Asignado":
                 if st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}"):
                     c["estado"] = "🔴 En viaje"
@@ -183,22 +185,22 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
                 st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}", disabled=True)
                 
         with col3:
-            # Botón para finalizar el viaje y quedar libre otra vez
+            # Activo solo cuando ya están en ruta
             if c["estado"] == "🔴 En viaje":
                 if st.button(f"🟢 Finalizar", key=f"fin_{c['nombre']}"):
                     c["estado"] = "🟢 Disponible"
                     st.rerun()
             else:
                 st.button(f"🟢 Finalizar", key=f"fin_{c['nombre']}", disabled=True)
-                
+    
     st.divider()
-    st.subheader("📋 Historial General de Solicitudes")
+    st.subheader("📋 Registro de Solicitudes")
     if st.session_state.historial_viajes:
         st.table(st.session_state.historial_viajes)
     else:
-        st.write("No hay solicitudes registradas.")
+        st.write("No hay solicitudes registradas en esta sesión.")
         
-    if st.button("🔄 Reiniciar Toda la Jornada"):
+    if st.button("🔄 Reiniciar Jornada (Liberar Todos)"):
         for c in st.session_state.conductores: c["estado"] = "🟢 Disponible"
         st.session_state.historial_viajes = []
         st.rerun()

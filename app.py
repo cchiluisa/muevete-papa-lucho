@@ -1,5 +1,7 @@
 import streamlit as st
 import urllib.parse
+import json
+import os
 from geopy.geocoders import Nominatim
 
 # Configuración de la pantalla del smartphone
@@ -41,20 +43,38 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Inicializar el buscador de direcciones (OpenStreetMap)
+# Inicializar el buscador de direcciones
 @st.cache_resource
 def obtener_geolocalizador():
     return Nominatim(user_agent="muevete_papa_lucho_local")
 
 geolocator = obtener_geolocalizador()
 
-# --- CONDUCTORES FIJOS EN EL SISTEMA (NUNCA SE BORRAN) ---
-if 'conductores' not in st.session_state:
-    st.session_state.conductores = [
-        {"nombre": "Luis", "estado": "🟢 Disponible", "telefono": "33751865303"},
-        {"nombre": "Filipe", "estado": "🟢 Disponible", "telefono": "33751865303"},
-        {"nombre": "Christian", "estado": "🟢 Disponible", "telefono": "33745358520"}
+# --- BASE DE DATOS COMPARTIDA EN ARCHIVO LOCAL ---
+DB_FILE = "estado_flota.json"
+
+def cargar_flota_global():
+    # Conductores fijos por defecto con su estado inicial
+    flota_defecto = [
+        {"nombre": "Luis", "estado": "⚪ Fuera de Servicio", "telefono": "33751865303"},
+        {"nombre": "Filipe", "estado": "⚪ Fuera de Servicio", "telefono": "33751865303"},
+        {"nombre": "Christian", "estado": "⚪ Fuera de Servicio", "telefono": "33745358520"}
     ]
+    if not os.path.exists(DB_FILE):
+        guardar_flota_global(flota_defecto)
+        return flota_defecto
+    try:
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return flota_defecto
+
+def guardar_flota_global(flota):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(flota, f, ensure_ascii=False, indent=4)
+
+# Carga de datos en tiempo real para esta pestaña
+conductores_actuales = cargar_flota_global()
 
 if 'historial_viajes' not in st.session_state: 
     st.session_state.historial_viajes = []
@@ -71,7 +91,7 @@ telefono_pasajero = st.text_input("Teléfono de Contacto 📞", placeholder="Ej:
 st.divider()
 st.markdown("### 🗺️ ¿A dónde nos movemos hoy?")
 
-origen_input = st.text_input("📍 ¿Dónde te recogemos? (Escribe y presiona Enter)", placeholder="Ej: Gare de Tarascon")
+origen_input = st.text_input("📍 ¿Dónde te recogemos?", placeholder="Ej: Gare de Tarascon")
 origen_final = origen_input
 
 if origen_input:
@@ -79,11 +99,11 @@ if origen_input:
         ubicaciones = geolocator.geocode(origen_input, exactly_one=False, limit=3, country_codes="fr")
         if ubicaciones:
             lista_direcciones = [u.address for u in ubicaciones]
-            origen_final = st.selectbox("🎯 Confirma la dirección exacta de recogida:", lista_direcciones)
+            origen_final = st.selectbox("🎯 Confirma recogida exacta:", lista_direcciones)
     except:
         origen_final = origen_input
 
-destino_input = st.text_input("🏁 ¿A qué dirección vas? (Escribe y presiona Enter)", placeholder="Ej: Chateau de Beaucaire")
+destino_input = st.text_input("🏁 ¿A qué dirección vas?", placeholder="Ej: Chateau de Beaucaire")
 destino_final = destino_input
 
 if destino_input:
@@ -99,15 +119,21 @@ st.write("")
 
 if st.button("🚀 SOLICITAR VIAJE NOW"):
     if not nombre_pasajero.strip() or not telefono_pasajero.strip():
-        st.error("⚠️ Por favor, introduce tu nombre y teléfono de contacto.")
+        st.error("⚠️ Por favor, introduce tu nombre y teléfono.")
     elif not origen_final.strip() or not destino_final.strip():
         st.error("⚠️ Por favor, dinos el punto de recogida y el destino.")
     else:
-        libres = [c for c in st.session_state.conductores if c["estado"] == "🟢 Disponible"]
+        # IMPORTANTE: Solo busca entre los que explícitamente se pusieron en verde ("🟢 Disponible")
+        libres = [c for c in conductores_actuales if c["estado"] == "🟢 Disponible"]
         
         if libres:
             conductor_asignado = libres[0]
-            conductor_asignado["estado"] = "🟡 Viaje Asignado"
+            
+            # Cambiamos su estado en la base de datos compartida
+            for c in conductores_actuales:
+                if c["nombre"] == conductor_asignado["nombre"]:
+                    c["estado"] = "🟡 Viaje Asignado"
+            guardar_flota_global(conductores_actuales)
             
             dir_origen_corta = origen_final.split(",")[0]
             dir_destino_corta = destino_final.split(",")[0]
@@ -115,7 +141,6 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
             
             registro_viaje = {
                 "Pasajero": nombre_pasajero,
-                "Teléfono": telefono_pasajero,
                 "Origen": dir_origen_corta,
                 "Destino": dir_destino_corta,
                 "Conductor": nombre_chofer
@@ -141,53 +166,62 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
                 </a>
             """, unsafe_allow_html=True)
         else:
-            st.warning("Todos los conductores están ocupados en este momento. Inténtalo de nuevo en unos minutos.")
+            st.warning("🛏️ En este momento todos los conductores están ocupados o fuera de servicio. Inténtalo de nuevo en unos minutos.")
 
-# --- PANEL CENTRAL DE ADMINISTRACIÓN PROTEGIDO ---
+# --- CONSOLA DE TRABAJO PARA CONDUCTORES Y ADMIN ---
 st.write("")
-with st.expander("⚙️ Consola interna de Papá Lucho"):
-    clave_ingresada = st.text_input("🔑 Introduce la Clave de Administrador", type="password")
+with st.expander("⚙️ Panel de Conductores / Administración"):
+    clave_ingresada = st.text_input("🔑 Introduce tu Clave de Acceso", type="password")
     
     if clave_ingresada == "lucho123":
-        st.success("🔓 Acceso Concedido")
+        st.success("🔓 Modo Operador Activo")
         st.divider()
+        st.subheader("💼 Control de Tu Estado de Trabajo")
+        st.info("Usa estos botones para avisar al sistema si estás despierto para trabajar o si te vas a descansar.")
         
-        st.subheader("🚗 Gestión y Control de la Flota")
-        
-        for idx, c in enumerate(st.session_state.conductores):
-            col_datos, col_ini, col_fin = st.columns([2.0, 1.5, 1.5])
+        for idx, c in enumerate(conductores_actuales):
+            st.markdown(f"🔹 Conductor: *{c['nombre']}* | Estado actual: {c['estado']}")
+            col1, col2, col3 = st.columns(3)
             
-            with col_datos:
-                st.write(f"*{c['nombre']}*\n\n`{c['estado']}`")
-            
-            with col_ini:
+            with col1:
+                if st.button("🟢 Conectarme", key=f"conect_{c['nombre']}_{idx}"):
+                    conductores_actuales[idx]["estado"] = "🟢 Disponible"
+                    guardar_flota_global(conductores_actuales)
+                    st.rerun()
+            with col2:
+                # Si tiene viaje asignado, el chofer puede marcar que ya inició el viaje
                 if c["estado"] == "🟡 Viaje Asignado":
-                    if st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}"):
-                        st.session_state.conductores[idx]["estado"] = "🔴 En viaje"
+                    if st.button("🏁 Iniciar Viaje", key=f"viaje_{c['nombre']}_{idx}"):
+                        conductores_actuales[idx]["estado"] = "🔴 En viaje"
+                        guardar_flota_global(conductores_actuales)
+                        st.rerun()
+                # Si ya está en viaje, puede marcar que terminó para volver a quedar disponible
+                elif c["estado"] == "🔴 En viaje":
+                    if st.button("✅ Terminar Viaje", key=f"fin_{c['nombre']}_{idx}"):
+                        conductores_actuales[idx]["estado"] = "🟢 Disponible"
+                        guardar_flota_global(conductores_actuales)
                         st.rerun()
                 else:
-                    st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}", disabled=True)
-                    
-            with col_fin:
-                if c["estado"] == "🔴 En viaje":
-                    if st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}"):
-                        st.session_state.conductores[idx]["estado"] = "🟢 Disponible"
-                        st.rerun()
-                else:
-                    st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}", disabled=True)
-                    
-        st.divider()
-        st.subheader("📋 Registro de Solicitudes")
+                    st.button("🚗 Cambiar Viaje", key=f"dis_{c['nombre']}_{idx}", disabled=True)
+            with col3:
+                if st.button("⚪ Desconectarme", key=f"desc_{c['nombre']}_{idx}"):
+                    conductores_actuales[idx]["estado"] = "⚪ Fuera de Servicio"
+                    guardar_flota_global(conductores_actuales)
+                    st.rerun()
+            st.divider()
+            
+        st.subheader("📋 Registro de Solicitudes de la Sesión")
         if st.session_state.historial_viajes:
             st.table(st.session_state.historial_viajes)
         else:
-            st.write("No hay solicitudes registradas en tu sesión actual.")
+            st.write("No hay solicitudes registradas en esta ventana.")
             
-        if st.button("🔄 Reiniciar Jornada (Liberar Todos)"):
-            for c in st.session_state.conductores: 
-                c["estado"] = "🟢 Disponible"
+        if st.button("🔄 Reiniciar Todos a Fuera de Servicio"):
+            for c in conductores_actuales:
+                c["estado"] = "⚪ Fuera de Servicio"
+            guardar_flota_global(conductores_actuales)
             st.session_state.historial_viajes = []
             st.rerun()
             
     elif clave_ingresada != "":
-        st.error("🔒 Clave incorrecta. Solo los administradores pueden gestionar la flota.")
+        st.error("🔒 Clave incorrecta. Solo el equipo de Papá Lucho tiene acceso.")

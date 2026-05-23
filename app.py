@@ -1,5 +1,6 @@
 import streamlit as st
 import urllib.parse
+import os
 from geopy.geocoders import Nominatim
 
 # Configuración de la pantalla del smartphone
@@ -41,20 +42,42 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Inicializar el buscador de direcciones (OpenStreetMap - Gratuito)
+# Inicializar el buscador de direcciones (OpenStreetMap)
 @st.cache_resource
 def obtener_geolocalizador():
     return Nominatim(user_agent="muevete_papa_lucho_local")
 
 geolocator = obtener_geolocalizador()
 
-# --- INICIALIZACIÓN DE DATOS EN MEMORIA VIVA ---
+# --- FUNCIONES PARA GUARDADO PERMANENTE EN ARCHIVO ---
+ARCH_CONDUCTORES = "conductores.txt"
+
+def cargar_conductores_fijos():
+    conductores = []
+    if os.path.exists(ARCH_CONDUCTORES):
+        with open(ARCH_CONDUCTORES, "r", encoding="utf-8") as f:
+            for linea in f:
+                partes = linea.strip().split("|")
+                if len(partes) == 3:
+                    conductores.append({
+                        "nombre": partes[0],
+                        "estado": partes[1],
+                        "telefono": partes[2]
+                    })
+    return conductores
+
+def guardar_conductores_fijos(conductores):
+    with open(ARCH_CONDUCTORES, "w", encoding="utf-8") as f:
+        for c in conductores:
+            f.write(f"{c['nombre']}|{c['estado']}|{c['telefono']}\n")
+
+# --- INICIALIZACIÓN DE DATOS ---
 if 'historial_viajes' not in st.session_state: 
     st.session_state.historial_viajes = []
 
-# CORRECCIÓN: Arrancamos con la lista de conductores vacía, lista para tus choferes reales
+# Cargamos los conductores desde el archivo permanente
 if 'conductores' not in st.session_state:
-    st.session_state.conductores = []
+    st.session_state.conductores = cargar_conductores_fijos()
 
 # --- INTERFAZ VISTA PASAJERO ---
 st.markdown("<h1 class='brand-title'>🚕 ¡Muévete!</h1>", unsafe_allow_html=True)
@@ -68,7 +91,6 @@ telefono_pasajero = st.text_input("Teléfono de Contacto 📞", placeholder="Ej:
 st.divider()
 st.markdown("### 🗺️ ¿A dónde nos movemos hoy?")
 
-# Buscador asistido para el punto de recogida
 origen_input = st.text_input("📍 ¿Dónde te recogemos? (Escribe y presiona Enter)", placeholder="Ej: Gare de Tarascon")
 origen_final = origen_input
 
@@ -81,7 +103,6 @@ if origen_input:
     except:
         origen_final = origen_input
 
-# Buscador asistido para el destino final
 destino_input = st.text_input("🏁 ¿A qué dirección vas? (Escribe y presiona Enter)", placeholder="Ej: Chateau de Beaucaire")
 destino_final = destino_input
 
@@ -110,6 +131,9 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
             conductor_asignado = libres[0]
             conductor_asignado["estado"] = "🟡 Viaje Asignado"
             
+            # Guardamos el cambio de estado en el archivo permanente
+            guardar_conductores_fijos(st.session_state.conductores)
+            
             dir_origen_corta = origen_final.split(",")[0]
             dir_destino_corta = destino_final.split(",")[0]
             
@@ -118,18 +142,18 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
                 "Teléfono": telefono_pasajero,
                 "Origen": dir_origen_corta,
                 "Destino": dir_destino_corta,
-                "Conductor": conductor_asignado["nombre"]
+                "Conductor": conductor_assigned_name := conductor_asignado["nombre"]
             }
             st.session_state.historial_viajes.append(registro_viaje)
             
-            texto_base = f"Hola {conductor_asignado['nombre']}, necesito un viaje desde {dir_origen_corta} hasta {dir_destino_corta}."
+            texto_base = f"Hola {conductor_assigned_name}, necesito un viaje desde {dir_origen_corta} hasta {dir_destino_corta}."
             texto_codificado = urllib.parse.quote(texto_base)
             url_whatsapp = f"https://wa.me/{conductor_asignado['telefono']}?text={texto_codificado}"
             
             st.markdown(f"""
                 <div style='background-color: #e0f2fe; padding: 18px; border-radius: 16px; border-left: 6px solid #0284c7; margin-bottom: 15px;'>
                     <h4 style='color: #0369a1; margin: 0;'>✨ ¡Solicitud Procesada!</h4>
-                    <p style='color: #0c4a6e; margin: 6px 0 0 0;'>Conductor asignado: <b>{conductor_asignado['nombre']}</b>.</p>
+                    <p style='color: #0c4a6e; margin: 6px 0 0 0;'>Conductor asignado: <b>{conductor_assigned_name}</b>.</p>
                 </div>
             """, unsafe_allow_html=True)
             
@@ -138,7 +162,7 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
             st.markdown(f"""
                 <a href="{url_whatsapp}" target="_blank">
                     <button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:14px; font-weight:bold; font-size:1.1em; cursor:pointer; margin-top:10px;">
-                        💬 ACORDAR PRECIO CON {conductor_asignado['nombre'].upper()}
+                        💬 ACORDAR PRECIO CON {conductor_assigned_name.upper()}
                     </button>
                 </a>
             """, unsafe_allow_html=True)
@@ -157,12 +181,13 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
             if c_nombre.strip() and c_telefono.strip():
                 nuevo_c = {"nombre": c_nombre, "estado": "🟢 Disponible", "telefono": c_telefono.strip().replace("+", "")}
                 st.session_state.conductores.append(nuevo_c)
-                st.success(f"¡Conductor {c_nombre} integrado con éxito!")
+                
+                # NUEVO: Guardamos inmediatamente en el disco duro del servidor
+                guardar_conductores_fijos(st.session_state.conductores)
+                st.success(f"¡Conductor {c_nombre} guardado permanentemente!")
                 st.rerun()
 
     st.divider()
-    
-    # GESTIÓN Y CONTROL DE LA FLOTA REAL
     st.subheader("🚗 Gestión y Control de la Flota")
     
     if st.session_state.conductores:
@@ -176,6 +201,7 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
                 if c["estado"] == "🟡 Viaje Asignado":
                     if st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}"):
                         c["estado"] = "🔴 En viaje"
+                        guardar_conductores_fijos(st.session_state.conductores)
                         st.rerun()
                 else:
                     st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}", disabled=True)
@@ -184,6 +210,7 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
                 if c["estado"] == "🔴 En viaje":
                     if st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}"):
                         c["estado"] = "🟢 Disponible"
+                        guardar_conductores_fijos(st.session_state.conductores)
                         st.rerun()
                 else:
                     st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}", disabled=True)
@@ -191,9 +218,11 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
             with col_borrar:
                 if st.button(f"🗑️ Borrar", key=f"del_{c['nombre']}_{idx}"):
                     st.session_state.conductores.pop(idx)
+                    # Guardamos los cambios tras eliminar
+                    guardar_conductores_fijos(st.session_state.conductores)
                     st.rerun()
     else:
-        st.write("No hay conductores registrados todavía. ¡Añade los reales arriba!")
+        st.write("No hay conductores registrados todavía.")
                 
     st.divider()
     st.subheader("📋 Registro de Solicitudes")
@@ -204,5 +233,6 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
         
     if st.button("🔄 Reiniciar Jornada (Liberar Todos)"):
         for c in st.session_state.conductores: c["estado"] = "🟢 Disponible"
+        guardar_conductores_fijos(st.session_state.conductores)
         st.session_state.historial_viajes = []
         st.rerun()

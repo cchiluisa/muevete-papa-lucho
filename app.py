@@ -1,6 +1,5 @@
 import streamlit as st
 import urllib.parse
-import os
 from geopy.geocoders import Nominatim
 
 # Configuración de la pantalla del smartphone
@@ -49,35 +48,18 @@ def obtener_geolocalizador():
 
 geolocator = obtener_geolocalizador()
 
-# --- FUNCIONES PARA GUARDADO PERMANENTE EN ARCHIVO ---
-ARCH_CONDUCTORES = "conductores.txt"
+# --- CONEXIÓN A LA BASE DE DATOS GLOBAL Y COMPARTIDA (NUBE) ---
+try:
+    db_compartida = st.get_store("flota_papa_lucho")
+except Exception:
+    db_compartida = st.session_state
 
-def cargar_conductores_fijos():
-    conductores = []
-    if os.path.exists(ARCH_CONDUCTORES):
-        with open(ARCH_CONDUCTORES, "r", encoding="utf-8") as f:
-            for linea in f:
-                partes = linea.strip().split("|")
-                if len(partes) == 3:
-                    conductores.append({
-                        "nombre": partes[0],
-                        "estado": partes[1],
-                        "telefono": partes[2]
-                    })
-    return conductores
+# Sincronizamos los conductores de forma global para todos los smartphones
+if 'conductores' not in db_compartida:
+    db_compartida['conductores'] = []
 
-def guardar_conductores_fijos(conductores):
-    with open(ARCH_CONDUCTORES, "w", encoding="utf-8") as f:
-        for c in conductores:
-            f.write(f"{c['nombre']}|{c['estado']}|{c['telefono']}\n")
-
-# --- INICIALIZACIÓN DE DATOS ---
 if 'historial_viajes' not in st.session_state: 
     st.session_state.historial_viajes = []
-
-# Cargamos los conductores fijos desde el archivo txt
-if 'conductores' not in st.session_state:
-    st.session_state.conductores = cargar_conductores_fijos()
 
 # --- INTERFAZ VISTA PASAJERO ---
 st.markdown("<h1 class='brand-title'>🚕 ¡Muévete!</h1>", unsafe_allow_html=True)
@@ -122,23 +104,19 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
         st.error("⚠️ Por favor, introduce tu nombre y teléfono de contacto.")
     elif not origen_final.strip() or not destino_final.strip():
         st.error("⚠️ Por favor, dinos el punto de recogida y el destino.")
-    elif not st.session_state.conductores:
-        st.error("⚠️ No hay conductores registrados en la consola todavía.")
+    elif not db_compartida['conductores']:
+        st.error("⚠️ No hay conductores disponibles registrados en el sistema en este momento.")
     else:
-        libres = [c for c in st.session_state.conductores if c["estado"] == "🟢 Disponible"]
+        libres = [c for c in db_compartida['conductores'] if c["estado"] == "🟢 Disponible"]
         
         if libres:
             conductor_asignado = libres[0]
             conductor_asignado["estado"] = "🟡 Viaje Asignado"
             
-            # Guardamos el cambio en el archivo de texto
-            guardar_conductores_fijos(st.session_state.conductores)
-            
             dir_origen_corta = origen_final.split(",")[0]
             dir_destino_corta = destino_final.split(",")[0]
             nombre_chofer = conductor_asignado["nombre"]
             
-            # Guardamos registro simple en el panel
             registro_viaje = {
                 "Pasajero": nombre_pasajero,
                 "Teléfono": telefono_pasajero,
@@ -148,7 +126,6 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
             }
             st.session_state.historial_viajes.append(registro_viaje)
             
-            # WhatsApp abre con un saludo básico
             texto_base = f"Hola {nombre_chofer}, necesito un viaje desde {dir_origen_corta} hasta {dir_destino_corta}."
             texto_codificado = urllib.parse.quote(texto_base)
             url_whatsapp = f"https://wa.me/{conductor_asignado['telefono']}?text={texto_codificado}"
@@ -160,8 +137,6 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
                 </div>
             """, unsafe_allow_html=True)
             
-            st.info("🤝 Pulsa el botón de abajo para hablar con tu conductor y acordar el precio.")
-            
             st.markdown(f"""
                 <a href="{url_whatsapp}" target="_blank">
                     <button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:14px; font-weight:bold; font-size:1.1em; cursor:pointer; margin-top:10px;">
@@ -172,71 +147,81 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
         else:
             st.warning("Todos los conductores están ocupados en este momento. Inténtalo de nuevo en unos minutos.")
 
-# --- PANEL CENTRAL DE ADMINISTRACIÓN ---
+# --- PANEL CENTRAL DE ADMINISTRACIÓN PROTEGIDO ---
 st.write("")
 with st.expander("⚙️ Consola interna de Papá Lucho"):
-    st.subheader("➕ Registrar Nuevo Conductor")
-    with st.form("nuevo_chofer_form", clear_on_submit=True):
-        c_nombre = st.text_input("Nombre del Conductor")
-        c_telefono = st.text_input("WhatsApp (ej: 33612345678)")
-        enviar_registro = st.form_submit_button("💾 Guardar Conductor")
-        if enviar_registro:
-            if c_nombre.strip() and c_telefono.strip():
-                # Limpiamos el teléfono por si ponen símbolos o el signo más
-                tel_limpio = c_telefono.strip().replace("+", "").replace(" ", "")
-                nuevo_c = {"nombre": c_nombre, "estado": "🟢 Disponible", "telefono": tel_limpio}
-                
-                st.session_state.conductores.append(nuevo_c)
-                guardar_conductores_fijos(st.session_state.conductores)
-                
-                st.success(f"¡Conductor {c_nombre} guardado permanentemente!")
-                st.rerun()
-
-    st.divider()
-    st.subheader("🚗 Gestión y Control de la Flota")
+    # Añadimos un campo oculto para que no se vea lo que escribes (tipo contraseña)
+    clave_ingresada = st.text_input("🔑 Introduce la Clave de Administrador", type="password")
     
-    if st.session_state.conductores:
-        for idx, c in enumerate(st.session_state.conductores):
-            col_datos, col_ini, col_fin, col_borrar = st.columns([1.8, 1.1, 1.1, 1.0])
-            
-            with col_datos:
-                st.write(f"*{c['nombre']}*\n\n`{c['estado']}`")
-            
-            with col_ini:
-                if c["estado"] == "🟡 Viaje Asignado":
-                    if st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}"):
-                        c["estado"] = "🔴 En viaje"
-                        guardar_conductores_fijos(st.session_state.conductores)
-                        st.rerun()
-                else:
-                    st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}", disabled=True)
-                    
-            with col_fin:
-                if c["estado"] == "🔴 En viaje":
-                    if st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}"):
-                        c["estado"] = "🟢 Disponible"
-                        guardar_conductores_fijos(st.session_state.conductores)
-                        st.rerun()
-                else:
-                    st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}", disabled=True)
-            
-            with col_borrar:
-                if st.button(f"🗑️ Borrar", key=f"del_{c['nombre']}_{idx}"):
-                    st.session_state.conductores.pop(idx)
-                    guardar_conductores_fijos(st.session_state.conductores)
-                    st.rerun()
-    else:
-        st.write("No hay conductores registrados todavía.")
-                
-    st.divider()
-    st.subheader("📋 Registro de Solicitudes")
-    if st.session_state.historial_viajes:
-        st.table(st.session_state.historial_viajes)
-    else:
-        st.write("No hay solicitudes registradas en esta sesión.")
+    # La contraseña configurada por defecto
+    if clave_ingresada == "lucho123":
+        st.success("🔓 Acceso Concedido")
+        st.divider()
         
-    if st.button("🔄 Reiniciar Jornada (Liberar Todos)"):
-        for c in st.session_state.conductores: c["estado"] = "🟢 Disponible"
-        guardar_conductores_fijos(st.session_state.conductores)
-        st.session_state.historial_viajes = []
-        st.rerun()
+        st.subheader("➕ Registrar Nuevo Conductor")
+        with st.form("nuevo_chofer_form", clear_on_submit=True):
+            c_nombre = st.text_input("Nombre del Conductor")
+            c_telefono = st.text_input("WhatsApp (ej: 33745442538)")
+            enviar_registro = st.form_submit_button("💾 Guardar Conductor")
+            if enviar_registro:
+                if c_nombre.strip() and c_telefono.strip():
+                    tel_limpio = c_telefono.strip().replace("+", "").replace(" ", "")
+                    nuevo_c = {"nombre": c_nombre, "estado": "🟢 Disponible", "telefono": tel_limpio}
+                    
+                    lista_actual = db_compartida['conductores']
+                    lista_actual.append(nuevo_c)
+                    db_compartida['conductores'] = lista_actual
+                    
+                    st.success(f"¡Conductor {c_nombre} integrado con éxito!")
+                    st.rerun()
+
+        st.divider()
+        st.subheader("🚗 Gestión y Control de la Flota (Sincronizada)")
+        
+        if db_compartida['conductores']:
+            lista_bucle = list(db_compartida['conductores'])
+            for idx, c in enumerate(lista_bucle):
+                col_datos, col_ini, col_fin, col_borrar = st.columns([1.6, 1.1, 1.1, 1.1])
+                
+                with col_datos:
+                    st.write(f"*{c['nombre']}*\n\n`{c['estado']}`")
+                
+                with col_ini:
+                    if c["estado"] == "🟡 Viaje Asignado":
+                        if st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}"):
+                            db_compartida['conductores'][idx]["estado"] = "🔴 En viaje"
+                            st.rerun()
+                    else:
+                        st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}", disabled=True)
+                        
+                with col_fin:
+                    if c["estado"] == "🔴 En viaje":
+                        if st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}"):
+                            db_compartida['conductores'][idx]["estado"] = "🟢 Disponible"
+                            st.rerun()
+                    else:
+                        st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}", disabled=True)
+                
+                with col_borrar:
+                    if st.button(f"🗑️ Borrar", key=f"del_{c['nombre']}_{idx}"):
+                        lista_modificable = db_compartida['conductores']
+                        lista_modificable.pop(idx)
+                        db_compartida['conductores'] = lista_modificable
+                        st.rerun()
+        else:
+            st.write("No hay conductores registrados todavía.")
+                    
+        st.divider()
+        st.subheader("📋 Registro de Solicitudes")
+        if st.session_state.historial_viajes:
+            st.table(st.session_state.historial_viajes)
+        else:
+            st.write("No hay solicitudes registradas en tu sesión actual.")
+            
+        if st.button("🔄 Reiniciar Jornada (Liberar Todos)"):
+            for c in db_compartida['conductores']: 
+                c["estado"] = "🟢 Disponible"
+            st.rerun()
+            
+    elif clave_ingresada != "":
+        st.error("🔒 Clave incorrecta. Solo los administradores pueden gestionar la flota.")

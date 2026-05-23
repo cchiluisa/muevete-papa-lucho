@@ -52,11 +52,9 @@ geolocator = obtener_geolocalizador()
 if 'historial_viajes' not in st.session_state: 
     st.session_state.historial_viajes = []
 
+# CORRECCIÓN: Arrancamos con la lista de conductores vacía, lista para tus choferes reales
 if 'conductores' not in st.session_state:
-    st.session_state.conductores = [
-        {"nombre": "Jean", "estado": "🟢 Disponible", "telefono": "33612345678"},
-        {"nombre": "Marie", "estado": "🟢 Disponible", "telefono": "33687654321"}
-    ]
+    st.session_state.conductores = []
 
 # --- INTERFAZ VISTA PASAJERO ---
 st.markdown("<h1 class='brand-title'>🚕 ¡Muévete!</h1>", unsafe_allow_html=True)
@@ -103,6 +101,8 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
         st.error("⚠️ Por favor, introduce tu nombre y teléfono de contacto.")
     elif not origen_final.strip() or not destino_final.strip():
         st.error("⚠️ Por favor, dinos el punto de recogida y el destino.")
+    elif not st.session_state.conductores:
+        st.error("⚠️ No hay conductores registrados en el sistema en este momento.")
     else:
         libres = [c for c in st.session_state.conductores if c["estado"] == "🟢 Disponible"]
         
@@ -162,39 +162,38 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
 
     st.divider()
     
-    # CONTROL DE ESTADOS Y ELIMINACIÓN DE CONDUCTORES
+    # GESTIÓN Y CONTROL DE LA FLOTA REAL
     st.subheader("🚗 Gestión y Control de la Flota")
     
-    # Usamos una copia de la lista para poder eliminar elementos de forma segura mientras iteramos
-    for idx, c in enumerate(st.session_state.conductores):
-        # Creamos una fila limpia con columnas para los botones de control y el de borrar
-        col_datos, col_ini, col_fin, col_borrar = st.columns([1.8, 1.1, 1.1, 1.0])
-        
-        with col_datos:
-            st.write(f"*{c['nombre']}*\n\n`{c['estado']}`")
-        
-        with col_ini:
-            if c["estado"] == "🟡 Viaje Asignado":
-                if st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}"):
-                    c["estado"] = "🔴 En viaje"
+    if st.session_state.conductores:
+        for idx, c in enumerate(st.session_state.conductores):
+            col_datos, col_ini, col_fin, col_borrar = st.columns([1.8, 1.1, 1.1, 1.0])
+            
+            with col_datos:
+                st.write(f"*{c['nombre']}*\n\n`{c['estado']}`")
+            
+            with col_ini:
+                if c["estado"] == "🟡 Viaje Asignado":
+                    if st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}"):
+                        c["estado"] = "🔴 En viaje"
+                        st.rerun()
+                else:
+                    st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}", disabled=True)
+                    
+            with col_fin:
+                if c["estado"] == "🔴 En viaje":
+                    if st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}"):
+                        c["estado"] = "🟢 Disponible"
+                        st.rerun()
+                else:
+                    st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}", disabled=True)
+            
+            with col_borrar:
+                if st.button(f"🗑️ Borrar", key=f"del_{c['nombre']}_{idx}"):
+                    st.session_state.conductores.pop(idx)
                     st.rerun()
-            else:
-                st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}", disabled=True)
-                
-        with col_fin:
-            if c["estado"] == "🔴 En viaje":
-                if st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}"):
-                    c["estado"] = "🟢 Disponible"
-                    st.rerun()
-            else:
-                st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}", disabled=True)
-        
-        with col_borrar:
-            # NUEVO: Botón rojo para eliminar definitivamente al conductor de la lista
-            if st.button(f"🗑️ Borrar", key=f"del_{c['nombre']}_{idx}"):
-                st.session_state.conductores.pop(idx)
-                st.success(f"Eliminado: {c['nombre']}")
-                st.rerun()
+    else:
+        st.write("No hay conductores registrados todavía. ¡Añade los reales arriba!")
                 
     st.divider()
     st.subheader("📋 Registro de Solicitudes")

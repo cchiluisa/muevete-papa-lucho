@@ -150,10 +150,8 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
 # --- PANEL CENTRAL DE ADMINISTRACIÓN PROTEGIDO ---
 st.write("")
 with st.expander("⚙️ Consola interna de Papá Lucho"):
-    # Añadimos un campo oculto para que no se vea lo que escribes (tipo contraseña)
     clave_ingresada = st.text_input("🔑 Introduce la Clave de Administrador", type="password")
     
-    # La contraseña configurada por defecto
     if clave_ingresada == "lucho123":
         st.success("🔓 Acceso Concedido")
         st.divider()

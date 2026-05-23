@@ -48,15 +48,13 @@ def obtener_geolocalizador():
 
 geolocator = obtener_geolocalizador()
 
-# --- CONEXIÓN A LA BASE DE DATOS GLOBAL Y COMPARTIDA (NUBE) ---
-try:
-    db_compartida = st.get_store("flota_papa_lucho")
-except Exception:
-    db_compartida = st.session_state
-
-# Sincronizamos los conductores de forma global para todos los smartphones
-if 'conductores' not in db_compartida:
-    db_compartida['conductores'] = []
+# --- CONDUCTORES FIJOS EN EL SISTEMA (NUNCA SE BORRAN) ---
+if 'conductores' not in st.session_state:
+    st.session_state.conductores = [
+        {"nombre": "Luis", "estado": "🟢 Disponible", "telefono": "33751865303"},
+        {"nombre": "Filipe", "estado": "🟢 Disponible", "telefono": "33751865303"},
+        {"nombre": "Christian", "estado": "🟢 Disponible", "telefono": "33745358520"}
+    ]
 
 if 'historial_viajes' not in st.session_state: 
     st.session_state.historial_viajes = []
@@ -104,10 +102,8 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
         st.error("⚠️ Por favor, introduce tu nombre y teléfono de contacto.")
     elif not origen_final.strip() or not destino_final.strip():
         st.error("⚠️ Por favor, dinos el punto de recogida y el destino.")
-    elif not db_compartida['conductores']:
-        st.error("⚠️ No hay conductores disponibles registrados en el sistema en este momento.")
     else:
-        libres = [c for c in db_compartida['conductores'] if c["estado"] == "🟢 Disponible"]
+        libres = [c for c in st.session_state.conductores if c["estado"] == "🟢 Disponible"]
         
         if libres:
             conductor_asignado = libres[0]
@@ -156,58 +152,29 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
         st.success("🔓 Acceso Concedido")
         st.divider()
         
-        st.subheader("➕ Registrar Nuevo Conductor")
-        with st.form("nuevo_chofer_form", clear_on_submit=True):
-            c_nombre = st.text_input("Nombre del Conductor")
-            c_telefono = st.text_input("WhatsApp (ej: 33745442538)")
-            enviar_registro = st.form_submit_button("💾 Guardar Conductor")
-            if enviar_registro:
-                if c_nombre.strip() and c_telefono.strip():
-                    tel_limpio = c_telefono.strip().replace("+", "").replace(" ", "")
-                    nuevo_c = {"nombre": c_nombre, "estado": "🟢 Disponible", "telefono": tel_limpio}
-                    
-                    lista_actual = db_compartida['conductores']
-                    lista_actual.append(nuevo_c)
-                    db_compartida['conductores'] = lista_actual
-                    
-                    st.success(f"¡Conductor {c_nombre} integrado con éxito!")
-                    st.rerun()
-
-        st.divider()
-        st.subheader("🚗 Gestión y Control de la Flota (Sincronizada)")
+        st.subheader("🚗 Gestión y Control de la Flota")
         
-        if db_compartida['conductores']:
-            lista_bucle = list(db_compartida['conductores'])
-            for idx, c in enumerate(lista_bucle):
-                col_datos, col_ini, col_fin, col_borrar = st.columns([1.6, 1.1, 1.1, 1.1])
-                
-                with col_datos:
-                    st.write(f"*{c['nombre']}*\n\n`{c['estado']}`")
-                
-                with col_ini:
-                    if c["estado"] == "🟡 Viaje Asignado":
-                        if st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}"):
-                            db_compartida['conductores'][idx]["estado"] = "🔴 En viaje"
-                            st.rerun()
-                    else:
-                        st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}", disabled=True)
-                        
-                with col_fin:
-                    if c["estado"] == "🔴 En viaje":
-                        if st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}"):
-                            db_compartida['conductores'][idx]["estado"] = "🟢 Disponible"
-                            st.rerun()
-                    else:
-                        st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}", disabled=True)
-                
-                with col_borrar:
-                    if st.button(f"🗑️ Borrar", key=f"del_{c['nombre']}_{idx}"):
-                        lista_modificable = db_compartida['conductores']
-                        lista_modificable.pop(idx)
-                        db_compartida['conductores'] = lista_modificable
+        for idx, c in enumerate(st.session_state.conductores):
+            col_datos, col_ini, col_fin = st.columns([2.0, 1.5, 1.5])
+            
+            with col_datos:
+                st.write(f"*{c['nombre']}*\n\n`{c['estado']}`")
+            
+            with col_ini:
+                if c["estado"] == "🟡 Viaje Asignado":
+                    if st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}"):
+                        st.session_state.conductores[idx]["estado"] = "🔴 En viaje"
                         st.rerun()
-        else:
-            st.write("No hay conductores registrados todavía.")
+                else:
+                    st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}", disabled=True)
+                    
+            with col_fin:
+                if c["estado"] == "🔴 En viaje":
+                    if st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}"):
+                        st.session_state.conductores[idx]["estado"] = "🟢 Disponible"
+                        st.rerun()
+                else:
+                    st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}", disabled=True)
                     
         st.divider()
         st.subheader("📋 Registro de Solicitudes")
@@ -217,8 +184,9 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
             st.write("No hay solicitudes registradas en tu sesión actual.")
             
         if st.button("🔄 Reiniciar Jornada (Liberar Todos)"):
-            for c in db_compartida['conductores']: 
+            for c in st.session_state.conductores: 
                 c["estado"] = "🟢 Disponible"
+            st.session_state.historial_viajes = []
             st.rerun()
             
     elif clave_ingresada != "":

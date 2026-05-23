@@ -76,7 +76,6 @@ origen_final = origen_input
 
 if origen_input:
     try:
-        # Busca texto coincidente limitado a Francia para mayor precisión local
         ubicaciones = geolocator.geocode(origen_input, exactly_one=False, limit=3, country_codes="fr")
         if ubicaciones:
             lista_direcciones = [u.address for u in ubicaciones]
@@ -105,15 +104,12 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
     elif not origen_final.strip() or not destino_final.strip():
         st.error("⚠️ Por favor, dinos el punto de recogida y el destino.")
     else:
-        # Filtrar conductores libres
         libres = [c for c in st.session_state.conductores if c["estado"] == "🟢 Disponible"]
         
         if libres:
             conductor_asignado = libres[0]
-            # Cambia el estado inicial a asignado
             conductor_asignado["estado"] = "🟡 Viaje Asignado"
             
-            # Cortamos el texto largo de la dirección para el registro interno
             dir_origen_corta = origen_final.split(",")[0]
             dir_destino_corta = destino_final.split(",")[0]
             
@@ -126,7 +122,6 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
             }
             st.session_state.historial_viajes.append(registro_viaje)
             
-            # Formatear enlace de WhatsApp limpio
             texto_base = f"Hola {conductor_asignado['nombre']}, necesito un viaje desde {dir_origen_corta} hasta {dir_destino_corta}."
             texto_codificado = urllib.parse.quote(texto_base)
             url_whatsapp = f"https://wa.me/{conductor_asignado['telefono']}?text={texto_codificado}"
@@ -167,32 +162,40 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
 
     st.divider()
     
-    # CONTROL INTERACTIVO DE ESTADOS PARA EL CHOFER
-    st.subheader("🚗 Control de Viajes de la Flota")
-    for c in st.session_state.conductores:
-        col1, col2, col3 = st.columns([2, 1.5, 1.5])
+    # CONTROL DE ESTADOS Y ELIMINACIÓN DE CONDUCTORES
+    st.subheader("🚗 Gestión y Control de la Flota")
+    
+    # Usamos una copia de la lista para poder eliminar elementos de forma segura mientras iteramos
+    for idx, c in enumerate(st.session_state.conductores):
+        # Creamos una fila limpia con columnas para los botones de control y el de borrar
+        col_datos, col_ini, col_fin, col_borrar = st.columns([1.8, 1.1, 1.1, 1.0])
         
-        with col1:
-            st.write(f"*{c['nombre']}*\n\n({c['estado']})")
+        with col_datos:
+            st.write(f"*{c['nombre']}*\n\n`{c['estado']}`")
         
-        with col2:
-            # Activo si el viaje fue solicitado
+        with col_ini:
             if c["estado"] == "🟡 Viaje Asignado":
-                if st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}"):
+                if st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}"):
                     c["estado"] = "🔴 En viaje"
                     st.rerun()
             else:
-                st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}", disabled=True)
+                st.button(f"🏁 Iniciar", key=f"ini_{c['nombre']}_{idx}", disabled=True)
                 
-        with col3:
-            # Activo solo cuando ya están en ruta
+        with col_fin:
             if c["estado"] == "🔴 En viaje":
-                if st.button(f"🟢 Finalizar", key=f"fin_{c['nombre']}"):
+                if st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}"):
                     c["estado"] = "🟢 Disponible"
                     st.rerun()
             else:
-                st.button(f"🟢 Finalizar", key=f"fin_{c['nombre']}", disabled=True)
-    
+                st.button(f"🟢 Fin", key=f"fin_{c['nombre']}_{idx}", disabled=True)
+        
+        with col_borrar:
+            # NUEVO: Botón rojo para eliminar definitivamente al conductor de la lista
+            if st.button(f"🗑️ Borrar", key=f"del_{c['nombre']}_{idx}"):
+                st.session_state.conductores.pop(idx)
+                st.success(f"Eliminado: {c['nombre']}")
+                st.rerun()
+                
     st.divider()
     st.subheader("📋 Registro de Solicitudes")
     if st.session_state.historial_viajes:

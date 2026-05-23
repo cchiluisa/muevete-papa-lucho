@@ -54,11 +54,11 @@ geolocator = obtener_geolocalizador()
 DB_FILE = "estado_flota.json"
 
 def cargar_flota_global():
-    # Conductores fijos por defecto con su estado inicial
+    # Conductores fijos con los números reales corregidos por Christian
     flota_defecto = [
         {"nombre": "Luis", "estado": "⚪ Fuera de Servicio", "telefono": "33751865303"},
-        {"nombre": "Filipe", "estado": "⚪ Fuera de Servicio", "telefono": "33751865303"},
-        {"nombre": "Christian", "estado": "⚪ Fuera de Servicio", "telefono": "33745358520"}
+        {"nombre": "Filipe", "estado": "⚪ Fuera de Servicio", "telefono": "33651883295"},
+        {"nombre": "Christian", "estado": "⚪ Fuera de Servicio", "telefono": "33745378520"}
     ]
     if not os.path.exists(DB_FILE):
         guardar_flota_global(flota_defecto)
@@ -73,7 +73,7 @@ def guardar_flota_global(flota):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(flota, f, ensure_ascii=False, indent=4)
 
-# Carga de datos en tiempo real para esta pestaña
+# Carga de datos actualizada
 conductores_actuales = cargar_flota_global()
 
 if 'historial_viajes' not in st.session_state: 
@@ -123,13 +123,13 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
     elif not origen_final.strip() or not destino_final.strip():
         st.error("⚠️ Por favor, dinos el punto de recogida y el destino.")
     else:
-        # IMPORTANTE: Solo busca entre los que explícitamente se pusieron en verde ("🟢 Disponible")
+        # Busca el primer conductor en verde ("🟢 Disponible")
         libres = [c for c in conductores_actuales if c["estado"] == "🟢 Disponible"]
         
         if libres:
             conductor_asignado = libres[0]
             
-            # Cambiamos su estado en la base de datos compartida
+            # Cambiar estado en la base de datos compartida
             for c in conductores_actuales:
                 if c["nombre"] == conductor_asignado["nombre"]:
                     c["estado"] = "🟡 Viaje Asignado"
@@ -189,13 +189,11 @@ with st.expander("⚙️ Panel de Conductores / Administración"):
                     guardar_flota_global(conductores_actuales)
                     st.rerun()
             with col2:
-                # Si tiene viaje asignado, el chofer puede marcar que ya inició el viaje
                 if c["estado"] == "🟡 Viaje Asignado":
                     if st.button("🏁 Iniciar Viaje", key=f"viaje_{c['nombre']}_{idx}"):
                         conductores_actuales[idx]["estado"] = "🔴 En viaje"
                         guardar_flota_global(conductores_actuales)
                         st.rerun()
-                # Si ya está en viaje, puede marcar que terminó para volver a quedar disponible
                 elif c["estado"] == "🔴 En viaje":
                     if st.button("✅ Terminar Viaje", key=f"fin_{c['nombre']}_{idx}"):
                         conductores_actuales[idx]["estado"] = "🟢 Disponible"

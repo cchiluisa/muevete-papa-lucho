@@ -1,9 +1,10 @@
 import streamlit as st
+from streamlit_js_eval import streamlit_js_eval
 
 # Configuración de la pantalla del smartphone
 st.set_page_config(page_title="Muévete con papá lucho", page_icon="🚕", layout="centered")
 
-# Estilos de diseño móvil personalizados con el nombre de la marca
+# Estilos de diseño móvil personalizados
 st.markdown("""
     <style>
     .main .block-container {
@@ -19,7 +20,7 @@ st.markdown("""
         border-radius: 14px;
         height: 3.2em;
         font-weight: bold;
-        background-color: #f59e0b !important; /* Amarillo taxi premium */
+        background-color: #f59e0b !important;
         color: white !important;
         border: none;
     }
@@ -39,20 +40,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- INICIALIZACIÓN DE DATOS EN LA NUBE ---
-DISTANCIAS = {
-    "Tarascon": {"Beaucaire": 2, "St-Étienne-du-Grès": 8, "Fontvieille": 10, "Boulbon": 9, "Tarascon": 0},
-    "Beaucaire": {"Tarascon": 2, "St-Étienne-du-Grès": 10, "Fontvieille": 12, "Boulbon": 11, "Beaucaire": 0},
-    "St-Étienne-du-Grès": {"Tarascon": 8, "Beaucaire": 10, "Fontvieille": 9, "Boulbon": 15, "St-Étienne-du-Grès": 0},
-    "Fontvieille": {"Tarascon": 10, "Beaucaire": 12, "St-Étienne-du-Grès": 9, "Boulbon": 18, "Fontvieille": 0},
-    "Boulbon": {"Tarascon": 9, "Beaucaire": 11, "St-Étienne-du-Grès": 15, "Fontvieille": 18, "Boulbon": 0}
-}
-pueblos = list(DISTANCIAS.keys())
-
-# Almacenamiento seguro en la sesión de la nube
-if 'billetera_plataforma' not in st.session_state:
-    st.session_state.billetera_plataforma = 0.0
-
+# --- INICIALIZACIÓN DE DATOS ---
+if 'billetera_plataforma' not in st.session_state: st.session_state.billetera_plataforma = 0.0
+if 'historial_viajes' not in st.session_state: st.session_state.historial_viajes = []
 if 'conductores' not in st.session_state:
     st.session_state.conductores = [
         {"nombre": "Jean", "ubicacion": "Tarascon", "disponible": True, "ganancias_netas": 0.0},
@@ -60,78 +50,89 @@ if 'conductores' not in st.session_state:
         {"nombre": "Pierre", "ubicacion": "St-Étienne-du-Grès", "disponible": True, "ganancias_netas": 0.0}
     ]
 
-# --- INTERFAZ DE USUARIO DE LA APP ---
+# Matriz de soporte base
+pueblos = ["Tarascon", "Beaucaire", "St-Étienne-du-Grès", "Fontvieille", "Boulbon"]
+
+# --- INTERFAZ ---
 st.markdown("<h1 class='brand-title'>🚕 ¡Muévete!</h1>", unsafe_allow_html=True)
 st.markdown("<p class='brand-subtitle'>con papá lucho</p>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #64748b; font-size: 0.9em;'>Tu transporte de confianza en Tarascon, Beaucaire y alrededores</p>", unsafe_allow_html=True)
 st.divider()
 
-st.markdown("### 🗺️ ¿Hacia dónde viajamos hoy?")
+st.markdown("### 👤 Datos del Pasajero")
+nombre_pasajero = st.text_input("Tu Nombre y Apellido", placeholder="Ej: Juan Pérez")
+telefono_pasajero = st.text_input("Teléfono de Contacto 📞", placeholder="Ej: +33 6 12 34 56 78")
 
-origen = st.selectbox("📍 Punto de recogida", pueblos, index=0)
-destino = st.selectbox("🏁 Destino final", pueblos, index=1)
+st.divider()
+st.markdown("### 🗺️ Ubicación de Recogida")
+
+# BOTÓN DE GPS REAL
+origen_gps = None
+if st.button("📍 Usar mi ubicación GPS actual"):
+    with st.spinner("Obteniendo coordenadas de tu teléfono..."):
+        # Esto ejecuta un script real en el navegador del móvil para extraer la latitud y longitud
+        loc = streamlit_js_eval(data_string="navigator.geolocation.getCurrentPosition(success => { return success.coords.latitude + ',' + success.coords.longitude; })", want_output=True)
+        if loc:
+            origen_gps = loc
+            st.success(f"Ubicación obtenida por GPS: {origen_gps}")
+        else:
+            st.warning("Por favor, acepta los permisos de ubicación en tu teléfono móvil.")
+
+# Si no usa el GPS o falla, puede elegir manualmente
+origen_manual = st.selectbox("O selecciona punto de recogida manual:", pueblos, index=0)
+destino = st.selectbox("🏁 ¿A dónde vas? (Destino)", pueblos, index=1)
+
+origen_final = f"Coordenadas GPS ({origen_gps})" if origen_gps else origen_manual
 
 st.markdown("### 💳 Método de pago")
-metodo_pago = st.radio("Selecciona cómo prefieres pagar:", ["💶 Efectivo al conductor", "💳 Tarjeta Digital"], horizontal=True)
-
-st.write("") 
+metodo_pago = st.radio("Pago:", ["💶 Efectivo", "💳 Tarjeta Digital"], horizontal=True)
 
 if st.button("🚀 PEDIR VIAJE AHORA"):
-    if origen == destino:
-        st.error("¡Papá Lucho te lleva a donde quieras, pero el origen y el destino no pueden ser iguales! 😉")
+    if not nombre_pasajero.strip() or not telefono_pasajero.strip():
+        st.error("⚠️ Falta tu nombre o teléfono.")
+    elif origen_manual == destino and not origen_gps:
+        st.error("El origen y el destino no pueden ser iguales.")
     else:
-        distancia = DISTANCIAS[origen][destino]
-        precio_total = 3.00 + (distancia * 1.20)
+        # Tarifa plana simulada de prueba para ubicación exacta
+        precio_total = 8.50 
         comision = round(precio_total * 0.15, 2)
         pago_conductor = round(precio_total - comision, 2)
         
-        # Filtrar conductores disponibles en la sesión
-        disponibles = [c for c in st.session_state.conductores if c["disponible"]]
+        conductor_asignado = next((c for c in st.session_state.conductores if c["disponible"]), None)
         
-        if disponibles:
-            # Encontrar el coche más cercano
-            conductor_asignado = None
-            dist_minima = float('inf')
-            for c in disponibles:
-                dist_al_cliente = DISTANCIAS[c["ubicacion"]][origen]
-                if dist_al_cliente < dist_minima:
-                    dist_minima = dist_al_cliente
-                    conductor_asignado = c
-            
-            # Registrar movimientos financieros
+        if conductor_asignado:
             st.session_state.billetera_plataforma += comision
             conductor_asignado["ganancias_netas"] += pago_conductor
-            conductor_asignado["ubicacion"] = destino
             conductor_asignado["disponible"] = False
             
-            # Confirmación de viaje en pantalla estilo App Móvil
-            st.markdown(f"""
-                <div style='background-color: #e0f2fe; padding: 18px; border-radius: 16px; border-left: 6px solid #0284c7; margin-bottom: 15px;'>
-                    <h4 style='color: #0369a1; margin: 0;'>✨ ¡Viaje Confirmado!</h4>
-                    <p style='color: #0c4a6e; margin: 6px 0 0 0;'>El conductor <b>{conductor_asignado['nombre']}</b> va en camino a recogerte.</p>
-                    <p style='color: #0c4a6e; margin: 2px 0 0 0; font-size: 0.9em;'>Pago seleccionado: <i>{metodo_pago}</i></p>
-                </div>
-            """, unsafe_allow_html=True)
+            registro_viaje = {
+                "Pasajero": nombre_pasajero,
+                "Teléfono": telefono_pasajero,
+                "Ubicación Recogida": origen_final,
+                "Destino": destino,
+                "Conductor": conductor_asignado["nombre"],
+                "Total": f"{precio_total:.2f} €"
+            }
+            st.session_state.historial_viajes.append(registro_viaje)
             
-            st.metric(label="Tarifa del viaje con Papá Lucho", value=f"{precio_total:.2f} €")
-            st.caption(f"Distancia de ruta: {distancia} km | Conductor se moverá a: {destino}")
-        else:
-            st.markdown("""
-                <div style='background-color: #fef3c7; padding: 15px; border-radius: 16px; border-left: 6px solid #d97706;'>
-                    <h4 style='color: #78350f; margin: 0;'>Flota al máximo ⚠️</h4>
-                    <p style='color: #92400e; margin: 5px 0 0 0;'>Todos los vehículos de Papá Lucho están ocupados. Por favor, espera unos minutos.</p>
+            st.markdown(f"""
+                <div style='background-color: #e0f2fe; padding: 18px; border-radius: 16px; border-left: 6px solid #0284c7;'>
+                    <h4 style='color: #0369a1; margin: 0;'>✨ ¡Confirmado!</h4>
+                    <p style='color: #0c4a6e; margin: 6px 0 0 0;'>El conductor <b>{conductor_asignado['nombre']}</b> va hacia tu ubicación.</p>
                 </div>
             """, unsafe_allow_html=True)
+            st.metric(label="Tarifa Estimada", value=f"{precio_total:.2f} €")
+        else:
+            st.warning("No hay conductores libres.")
 
-# Panel oculto para pruebas administrativas
-with st.expander("⚙️ Consola interna de Papá Lucho"):
-    st.metric(label="Ingresos por Comisión App (15%)", value=f"{st.session_state.billetera_plataforma:.2f} €")
-    
-    for c in st.session_state.conductores:
-        est = "🟢 Disponible" if c["disponible"] else "🔴 En viaje"
-        st.write(f"• *{c['nombre']}* ({est}) | Zona: {c['ubicacion']} | Saldo: {c['ganancias_netas']:.2f}€")
+# Consola de administración
+with st.expander("⚙️ Consola de Control de Papá Lucho"):
+    st.write("### 📋 Pedidos Activos con localización:")
+    if st.session_state.historial_viajes:
+        st.table(st.session_state.historial_viajes)
+    else:
+        st.write("No hay solicitudes aún.")
         
-    if st.button("🔄 Inicializar / Liberar Flota"):
-        for c in st.session_state.conductores:
-            c["disponible"] = True
+    if st.button("🔄 Liberar Flota"):
+        for c in st.session_state.conductores: c["disponible"] = True
+        st.session_state.historial_viajes = []
         st.rerun()

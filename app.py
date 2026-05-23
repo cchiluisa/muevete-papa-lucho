@@ -75,7 +75,7 @@ def guardar_conductores_fijos(conductores):
 if 'historial_viajes' not in st.session_state: 
     st.session_state.historial_viajes = []
 
-# Cargamos los conductores desde el archivo permanente
+# Cargamos los conductores fijos desde el archivo txt
 if 'conductores' not in st.session_state:
     st.session_state.conductores = cargar_conductores_fijos()
 
@@ -123,7 +123,7 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
     elif not origen_final.strip() or not destino_final.strip():
         st.error("⚠️ Por favor, dinos el punto de recogida y el destino.")
     elif not st.session_state.conductores:
-        st.error("⚠️ No hay conductores registrados en el sistema en este momento.")
+        st.error("⚠️ No hay conductores registrados en la consola todavía.")
     else:
         libres = [c for c in st.session_state.conductores if c["estado"] == "🟢 Disponible"]
         
@@ -131,29 +131,32 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
             conductor_asignado = libres[0]
             conductor_asignado["estado"] = "🟡 Viaje Asignado"
             
-            # Guardamos el cambio de estado en el archivo permanente
+            # Guardamos el cambio en el archivo de texto
             guardar_conductores_fijos(st.session_state.conductores)
             
             dir_origen_corta = origen_final.split(",")[0]
             dir_destino_corta = destino_final.split(",")[0]
+            nombre_chofer = conductor_asignado["nombre"]
             
+            # Guardamos registro simple en el panel
             registro_viaje = {
                 "Pasajero": nombre_pasajero,
                 "Teléfono": telefono_pasajero,
                 "Origen": dir_origen_corta,
                 "Destino": dir_destino_corta,
-                "Conductor": conductor_assigned_name := conductor_asignado["nombre"]
+                "Conductor": nombre_chofer
             }
             st.session_state.historial_viajes.append(registro_viaje)
             
-            texto_base = f"Hola {conductor_assigned_name}, necesito un viaje desde {dir_origen_corta} hasta {dir_destino_corta}."
+            # WhatsApp abre con un saludo básico
+            texto_base = f"Hola {nombre_chofer}, necesito un viaje desde {dir_origen_corta} hasta {dir_destino_corta}."
             texto_codificado = urllib.parse.quote(texto_base)
             url_whatsapp = f"https://wa.me/{conductor_asignado['telefono']}?text={texto_codificado}"
             
             st.markdown(f"""
                 <div style='background-color: #e0f2fe; padding: 18px; border-radius: 16px; border-left: 6px solid #0284c7; margin-bottom: 15px;'>
                     <h4 style='color: #0369a1; margin: 0;'>✨ ¡Solicitud Procesada!</h4>
-                    <p style='color: #0c4a6e; margin: 6px 0 0 0;'>Conductor asignado: <b>{conductor_assigned_name}</b>.</p>
+                    <p style='color: #0c4a6e; margin: 6px 0 0 0;'>Conductor asignado: <b>{nombre_chofer}</b>.</p>
                 </div>
             """, unsafe_allow_html=True)
             
@@ -162,7 +165,7 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
             st.markdown(f"""
                 <a href="{url_whatsapp}" target="_blank">
                     <button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:14px; font-weight:bold; font-size:1.1em; cursor:pointer; margin-top:10px;">
-                        💬 ACORDAR PRECIO CON {conductor_assigned_name.upper()}
+                        💬 ACORDAR PRECIO CON {nombre_chofer.upper()}
                     </button>
                 </a>
             """, unsafe_allow_html=True)
@@ -179,11 +182,13 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
         enviar_registro = st.form_submit_button("💾 Guardar Conductor")
         if enviar_registro:
             if c_nombre.strip() and c_telefono.strip():
-                nuevo_c = {"nombre": c_nombre, "estado": "🟢 Disponible", "telefono": c_telefono.strip().replace("+", "")}
-                st.session_state.conductores.append(nuevo_c)
+                # Limpiamos el teléfono por si ponen símbolos o el signo más
+                tel_limpio = c_telefono.strip().replace("+", "").replace(" ", "")
+                nuevo_c = {"nombre": c_nombre, "estado": "🟢 Disponible", "telefono": tel_limpio}
                 
-                # NUEVO: Guardamos inmediatamente en el disco duro del servidor
+                st.session_state.conductores.append(nuevo_c)
                 guardar_conductores_fijos(st.session_state.conductores)
+                
                 st.success(f"¡Conductor {c_nombre} guardado permanentemente!")
                 st.rerun()
 
@@ -218,7 +223,6 @@ with st.expander("⚙️ Consola interna de Papá Lucho"):
             with col_borrar:
                 if st.button(f"🗑️ Borrar", key=f"del_{c['nombre']}_{idx}"):
                     st.session_state.conductores.pop(idx)
-                    # Guardamos los cambios tras eliminar
                     guardar_conductores_fijos(st.session_state.conductores)
                     st.rerun()
     else:

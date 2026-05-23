@@ -90,25 +90,26 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
             }
             st.session_state.historial_viajes.append(registro_viaje)
             
-            # WhatsApp abre con un saludo básico e invita a acordar el precio por ahí
+            # WhatsApp abre con un saludo básico
             texto_base = f"Hola {conductor_asignado['nombre']}, necesito un viaje con Papá Lucho."
             texto_codificado = urllib.parse.quote(texto_base)
             url_whatsapp = f"https://wa.me/{conductor_asignado['telefono']}?text={texto_codificado}"
             
+            # CORRECCIÓN AQUÍ: Evitamos la asignación inline que rompió la app
             st.markdown(f"""
                 <div style='background-color: #e0f2fe; padding: 18px; border-radius: 16px; border-left: 6px solid #0284c7; margin-bottom: 15px;'>
                     <h4 style='color: #0369a1; margin: 0;'>✨ ¡Solicitud Procesada!</h4>
-                    <p style='color: #0c4a6e; margin: 6px 0 0 0;'>Conductor asignado: <b>{conductor_assigned_name := conductor_asignado['nombre']}</b>.</p>
+                    <p style='color: #0c4a6e; margin: 6px 0 0 0;'>Conductor asignado: <b>{conductor_asignado['nombre']}</b>.</p>
                 </div>
             """, unsafe_allow_html=True)
             
             st.info("🤝 Pulsa el botón de abajo para hablar con tu conductor y acordar el precio del viaje.")
             
-            # Botón directo de contacto para pactar el precio
+            # Botón directo de contacto
             st.markdown(f"""
                 <a href="{url_whatsapp}" target="_blank">
                     <button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:14px; font-weight:bold; font-size:1.1em; cursor:pointer; margin-top:10px;">
-                        💬 ACORDAR PRECIO CON {conductor_assigned_name.upper()}
+                        💬 ACORDAR PRECIO CON {conductor_asignado['nombre'].upper()}
                     </button>
                 </a>
             """, unsafe_allow_html=True)
@@ -117,7 +118,7 @@ if st.button("🚀 SOLICITAR VIAJE NOW"):
 
 # --- PANEL CENTRAL DE ADMINISTRACIÓN ---
 st.write("")
-with st.expander("⚙️ PANEL CENTRAL DE ADMINISTRACIÓN (Papá Lucho)"):
+with st.expander("⚙️ Consola interna de Papá Lucho"):
     st.subheader("➕ Registrar Nuevo Conductor")
     with st.form("nuevo_chofer_form", clear_on_submit=True):
         c_nombre = st.text_input("Nombre del Conductor")

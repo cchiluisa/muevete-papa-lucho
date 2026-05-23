@@ -1,4 +1,4 @@
-[03:10, 23/5/2026] cchiluisa: import streamlit as st
+import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
 
 # Configuración de la pantalla del smartphone

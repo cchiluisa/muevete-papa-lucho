@@ -9,14 +9,10 @@ st.set_page_config(
 )
 
 # --- INYECCIÓN DE METADATOS PARA OPTIMIZAR LA PRESENTACIÓN EN WHATSAPP ---
-# Esto obliga a WhatsApp a leer el nuevo título y descripción en la vista previa
 st.markdown("""
     <head>
-        <!-- Título principal de la tarjeta en WhatsApp -->
         <meta property="og:title" content="Te lo llevo – Je m'en occupe" />
-        <!-- Descripción secundaria en la tarjeta -->
-        <meta property="og:description" content="Guarda el tiempo para ti | Votre temps est à vous. Servicios y recados cotidianos." />
-        <!-- Tipo de sitio -->
+        <meta property="og:description" content="Guarda el tiempo para ti | Votre temps est à vous. Servicios, recados y traslados cotidianos." />
         <meta property="og:type" content="website" />
     </head>
     """, unsafe_allow_html=True)
@@ -37,6 +33,7 @@ IDIOMAS = {
         "section_favor": "📝 ¿Qué favor o recado necesitas? / De quoi avez-vous besoin ?",
         "label_tipo": "Selecciona una opción / Sélectionnez une option :",
         "opciones_favor": [
+            "🚗 Se hacen carreras / Traslados (Déplacements / Trajets)",
             "🛒 Hacer la compra / Supermercado (Courses)",
             "📦 Recoger o enviar un paquete (Colis)",
             "💊 Ir a la farmacia (Pharmacie)",
@@ -45,8 +42,8 @@ IDIOMAS = {
             "❓ Otro favor / Autre service"
         ],
         "label_detalles": "Explícanos los detalles de lo que necesitas / Détails :",
-        "placeholder_detalles": "Ej: Necesito comprar pan, leche... / J'ai besoin de...",
-        "label_dir": "📍 Dirección donde debemos ir / Adresse de livraison ou rendez-vous :",
+        "placeholder_detalles": "Ej: Necesito una carrera al hospital, o comprar pan...",
+        "label_dir": "📍 Dirección o Punto de encuentro / Adresse ou point de rendez-vous :",
         "placeholder_dir": "Ej: Rue de la République, Tarascon",
         "btn_enviar": "🚀 ENVIAR SOLICITUD A LA CENTRAL",
         "error_datos": "⚠️ Por favor, introduce tu nombre y teléfono de contacto.",
@@ -70,6 +67,7 @@ IDIOMAS = {
         "section_favor": "📝 De quoi avez-vous besoin aujourd'hui ?",
         "label_tipo": "Sélectionnez une option :",
         "opciones_favor": [
+            "🚗 Déplacements / Trajets (Se hacen carreras)",
             "🛒 Faire les courses / Supermarché",
             "📦 Récupérer ou envoyer un colis",
             "💊 Aller à la pharmacie",
@@ -77,9 +75,9 @@ IDIOMAS = {
             "🛠️ Petite aide à la maison / Bricolage",
             "❓ Autre service (À préciser ci-dessous)"
         ],
-        "label_detalles": "Expliquez-nous les detalles de votre demande :",
-        "placeholder_detalles": "Ex: J'ai besoin d'acheter du pain, du lait...",
-        "label_dir": "📍 Adresse de livraison ou rendez-vous :",
+        "label_detalles": "Expliquez-nous les détails de votre demande :",
+        "placeholder_detalles": "Ex: J'ai besoin d'un trajet jusqu'à la gare, ou acheter du pain...",
+        "label_dir": "📍 Adresse ou point de rendez-vous :",
         "placeholder_dir": "Ex: Rue de la République, Tarascon",
         "btn_enviar": "🚀 ENVOYER LA DEMANDE À LA CENTRALE",
         "error_datos": "⚠️ Veuillez entrer votre nom et votre numéro de téléphone.",
@@ -139,12 +137,12 @@ st.markdown(f"<p class='brand-subtitle'>{textos['subtitle']}</p>", unsafe_allow_
 st.divider()
 
 st.markdown(f"### {textos['section_datos']}")
-nombre_cliente = st.text_input(textos['label_nombre'], placeholder=textos['placeholder_nombre'], key="input_nombre_v4")
-telefono_cliente = st.text_input(textos['label_tel'], placeholder=textos['placeholder_tel'], key="input_tel_v4")
+nombre_cliente = st.text_input(textos['label_nombre'], placeholder=textos['placeholder_nombre'], key="input_nombre_v5")
+telefono_cliente = st.text_input(textos['label_tel'], placeholder=textos['placeholder_tel'], key="input_tel_v5")
 
 st.divider()
 st.markdown(f"### {textos['section_central']}")
-opcion_central = st.selectbox(textos['label_central'], list(CENTRALES.keys()), key="select_central_v4")
+opcion_central = st.selectbox(textos['label_central'], list(CENTRALES.keys()), key="select_central_v5")
 telefono_destino = CENTRALES[opcion_central]
 
 st.write("")
@@ -158,11 +156,11 @@ st.markdown(f"""
 
 st.divider()
 st.markdown(f"### {textos['section_favor']}")
-tipo_favor = st.selectbox(textos['label_tipo'], textos['opciones_favor'], key="select_favor_v4")
-detalles_favor = st.text_area(textos['label_detalles'], placeholder=textos['placeholder_detalles'], key="area_detalles_v4")
-direccion_favor = st.text_input(textos['label_dir'], placeholder=textos['placeholder_dir'], key="input_dir_v4")
+tipo_favor = st.selectbox(textos['label_tipo'], textos['opciones_favor'], key="select_favor_v5")
+detalles_favor = st.text_area(textos['label_detalles'], placeholder=textos['placeholder_detalles'], key="area_detalles_v5")
+direccion_favor = st.text_input(textos['label_dir'], placeholder=textos['placeholder_dir'], key="input_dir_v5")
 
-if st.button(textos['btn_enviar'], key="btn_enviar_v4"):
+if st.button(textos['btn_enviar'], key="btn_enviar_v5"):
     if not nombre_cliente.strip() or not telefono_cliente.strip():
         st.error(textos['error_datos'])
     elif not detalles_favor.strip() or not direccion_favor.strip():

@@ -1,8 +1,12 @@
 import streamlit as st
 import urllib.parse
 
-# Configuración de la pantalla del smartphone
-st.set_page_config(page_title="Te lo llevo", page_icon="🤝", layout="centered")
+# --- CORRECCIÓN DE VISTA PREVIA Y METADATOS DE LA PÁGINA ---
+st.set_page_config(
+    page_title="Te lo llevo – Je m'en occupe",
+    page_icon="🤝",
+    layout="centered"
+)
 
 # --- TRADUCCIONES INTERFAZ (ESPAÑOL / FRANÇAIS) ---
 IDIOMAS = {
@@ -13,7 +17,7 @@ IDIOMAS = {
         "placeholder_nombre": "Ej: María Gómez",
         "placeholder_tel": "Ej: +33 6 12 34 56 78",
         "label_nombre": "Tu Nombre y Apellido / Nom et Prénom",
-        "label_tel": "Tu Teléfono de Contacto 📞 / Numéro de teléfono",
+        "label_tel": "Tu Teléfono de Contacto 📞 / Numéro de téléphone",
         "section_central": "📞 ¿A qué central deseas enviar tu solicitud? / Quelle línea?",
         "label_central": "Selecciona una línea de atención / Ligne d'attention :",
         "btn_llamar": "📞 LLAMAR A LA CENTRAL (PEDIDO ESPECIAL)",
@@ -122,12 +126,12 @@ st.markdown(f"<p class='brand-subtitle'>{textos['subtitle']}</p>", unsafe_allow_
 st.divider()
 
 st.markdown(f"### {textos['section_datos']}")
-nombre_cliente = st.text_input(textos['label_nombre'], placeholder=textos['placeholder_nombre'], key="input_nombre_v2")
-telefono_cliente = st.text_input(textos['label_tel'], placeholder=textos['placeholder_tel'], key="input_tel_v2")
+nombre_cliente = st.text_input(textos['label_nombre'], placeholder=textos['placeholder_nombre'], key="input_nombre_v3")
+telefono_cliente = st.text_input(textos['label_tel'], placeholder=textos['placeholder_tel'], key="input_tel_v3")
 
 st.divider()
 st.markdown(f"### {textos['section_central']}")
-opcion_central = st.selectbox(textos['label_central'], list(CENTRALES.keys()), key="select_central_v2")
+opcion_central = st.selectbox(textos['label_central'], list(CENTRALES.keys()), key="select_central_v3")
 telefono_destino = CENTRALES[opcion_central]
 
 st.write("")
@@ -141,17 +145,16 @@ st.markdown(f"""
 
 st.divider()
 st.markdown(f"### {textos['section_favor']}")
-tipo_favor = st.selectbox(textos['label_tipo'], textos['opciones_favor'], key="select_favor_v2")
-detalles_favor = st.text_area(textos['label_detalles'], placeholder=textos['placeholder_detalles'], key="area_detalles_v2")
-direccion_favor = st.text_input(textos['label_dir'], placeholder=textos['placeholder_dir'], key="input_dir_v2")
+tipo_favor = st.selectbox(textos['label_tipo'], textos['opciones_favor'], key="select_favor_v3")
+detalles_favor = st.text_area(textos['label_detalles'], placeholder=textos['placeholder_detalles'], key="area_detalles_v3")
+direccion_favor = st.text_input(textos['label_dir'], placeholder=textos['placeholder_dir'], key="input_dir_v3")
 
-if st.button(textos['btn_enviar'], key="btn_enviar_v2"):
+if st.button(textos['btn_enviar'], key="btn_enviar_v3"):
     if not nombre_cliente.strip() or not telefono_cliente.strip():
         st.error(textos['error_datos'])
     elif not detalles_favor.strip() or not direccion_favor.strip():
         st.error(textos['error_detalles'])
     else:
-        # Texto limpio sin rastro alguno de la marca anterior
         texto_base = f"🔔 [{textos['encabezado_wa']}]\n\n👤 Client(e): {nombre_cliente}\n📞 Tel: {telefono_cliente}\n📋 Cat: {tipo_favor}\n📝 Details: {detalles_favor}\n📍 Adresse: {direccion_favor}"
         url_whatsapp = f"https://wa.me/{telefono_destino}?text={urllib.parse.quote(texto_base)}"
         

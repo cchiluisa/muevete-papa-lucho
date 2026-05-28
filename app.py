@@ -8,13 +8,13 @@ st.set_page_config(page_title="Manon Services", page_icon="🤝", layout="center
 IDIOMAS = {
     "Español 🇪🇸": {
         "title": "🤝 Manon Services",
-        "subtitle": "Guarda el tiempo para ti | Votre temps est à vous",
+        "subtitle": "Te lo llevo | Je m'en occupe",
         "section_datos": "👤 Tus Datos / Vos Coordonnées",
         "placeholder_nombre": "Ej: María Gómez",
         "placeholder_tel": "Ej: +33 6 12 34 56 78",
         "label_nombre": "Tu Nombre y Apellido / Nom et Prénom",
-        "label_tel": "Tu Teléfono de Contacto 📞 / Numéro de teléfono",
-        "section_central": "📞 ¿A qué central deseas enviar tu solicitud? / Quelle línea?",
+        "label_tel": "Tu Teléfono de Contacto 📞 / Numéro de téléphone",
+        "section_central": "📞 ¿A qué central deseas enviar tu solicitud? / Quelle ligne?",
         "label_central": "Selecciona una línea de atención / Ligne d'attention :",
         "btn_llamar": "📞 LLAMAR A LA CENTRAL (PEDIDO ESPECIAL)",
         "section_favor": "📝 ¿Qué favor o recado necesitas? / De quoi avez-vous besoin ?",
@@ -41,7 +41,7 @@ IDIOMAS = {
     },
     "Français 🇫🇷": {
         "title": "🤝 Manon Services",
-        "subtitle": "Votre temps est à vous | Guarda el tiempo para ti",
+        "subtitle": "Je m'en occupe | Te lo llevo",
         "section_datos": "👤 Vos Coordonnées",
         "placeholder_nombre": "Ex: Marie Dubois",
         "placeholder_tel": "Ex: +33 6 12 34 56 78",
@@ -105,7 +105,8 @@ st.markdown("""
         color: #6d28d9;
         font-weight: bold;
         margin-top: 0px;
-        font-size: 0.95em;
+        font-size: 1.05em;
+        font-style: italic;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -160,7 +161,6 @@ if st.button(textos['btn_enviar']):
     elif not detalles_favor.strip() or not direccion_favor.strip():
         st.error(textos['error_detalles'])
     else:
-        # CORREGIDO: Ahora el mensaje de WhatsApp inicia con el encabezado limpio de Manon Services
         texto_base = f"{textos['encabezado_wa']}\n\n" \
                      f"👤 Client(e): {nombre_cliente}\n" \
                      f"📞 Tel: {telefono_cliente}\n" \

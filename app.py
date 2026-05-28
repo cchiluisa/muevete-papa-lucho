@@ -13,8 +13,8 @@ IDIOMAS = {
         "placeholder_nombre": "Ej: María Gómez",
         "placeholder_tel": "Ej: +33 6 12 34 56 78",
         "label_nombre": "Tu Nombre y Apellido / Nom et Prénom",
-        "label_tel": "Tu Teléfono de Contacto 📞 / Numéro de téléphone",
-        "section_central": "📞 ¿A qué central deseas enviar tu solicitud? / Quelle ligne?",
+        "label_tel": "Tu Teléfono de Contacto 📞 / Numéro de teléfono",
+        "section_central": "📞 ¿A qué central deseas enviar tu solicitud? / Quelle línea?",
         "label_central": "Selecciona una línea de atención / Ligne d'attention :",
         "btn_llamar": "📞 LLAMAR A LA CENTRAL (PEDIDO ESPECIAL)",
         "section_favor": "📝 ¿Qué favor o recado necesitas? / De quoi avez-vous besoin ?",
@@ -36,7 +36,8 @@ IDIOMAS = {
         "error_detalles": "⚠️ Por favor, dinos detalladamente qué necesitas y la dirección.",
         "alerta_lista": "✨ ¡Solicitud Lista / Demande Prête !",
         "alerta_desc": "Pulsa el botón de abajo para enviar el recado de forma inmediata a la central por WhatsApp.",
-        "btn_whatsapp": "💬 ENVIAR A LA CENTRAL POR WHATSAPP"
+        "btn_whatsapp": "💬 ENVIAR A LA CENTRAL POR WHATSAPP",
+        "encabezado_wa": "🔔 [MANON SERVICES - NUEVA SOLICITUD]"
     },
     "Français 🇫🇷": {
         "title": "🤝 Manon Services",
@@ -68,7 +69,8 @@ IDIOMAS = {
         "error_detalles": "⚠️ Veuillez préciser les détails de votre demande et l'adresse.",
         "alerta_lista": "✨ Demande Prête !",
         "alerta_desc": "Cliquez sur le bouton ci-dessous pour envoyer immédiatement votre demande à la centrale via WhatsApp.",
-        "btn_whatsapp": "💬 ENVOYER À LA CENTRALE VIA WHATSAPP"
+        "btn_whatsapp": "💬 ENVOYER À LA CENTRALE VIA WHATSAPP",
+        "encabezado_wa": "🔔 [MANON SERVICES - NOUVELLE DEMANDE]"
     }
 }
 
@@ -132,7 +134,7 @@ st.markdown(f"### {textos['section_central']}")
 opcion_central = st.selectbox(textos['label_central'], list(CENTRALES.keys()))
 telefono_destino = CENTRALES[opcion_central]
 
-# --- BOTÓN DE LLAMADA TELEFÓNICA DIRECTA (NUEVO) ---
+# --- BOTÓN DE LLAMADA TELEFÓNICA DIRECTA ---
 st.write("")
 st.markdown(f"""
     <a href="tel:+{telefono_destino}">
@@ -158,8 +160,8 @@ if st.button(textos['btn_enviar']):
     elif not detalles_favor.strip() or not direccion_favor.strip():
         st.error(textos['error_detalles'])
     else:
-        # Formatear el mensaje de WhatsApp que recibirá la central de Aleska
-        texto_base = f"🔔 [MANON SERVICES - {idioma_seleccionado.upper()}]\n\n" \
+        # CORREGIDO: Ahora el mensaje de WhatsApp inicia con el encabezado limpio de Manon Services
+        texto_base = f"{textos['encabezado_wa']}\n\n" \
                      f"👤 Client(e): {nombre_cliente}\n" \
                      f"📞 Tel: {telefono_cliente}\n" \
                      f"📋 Cat: {tipo_favor}\n" \

@@ -1,12 +1,25 @@
 import streamlit as st
 import urllib.parse
 
-# --- CORRECCIÓN DE VISTA PREVIA Y METADATOS DE LA PÁGINA ---
+# --- CONFIGURACIÓN DE PÁGINA (Título de la pestaña del navegador) ---
 st.set_page_config(
     page_title="Te lo llevo – Je m'en occupe",
     page_icon="🤝",
     layout="centered"
 )
+
+# --- INYECCIÓN DE METADATOS PARA OPTIMIZAR LA PRESENTACIÓN EN WHATSAPP ---
+# Esto obliga a WhatsApp a leer el nuevo título y descripción en la vista previa
+st.markdown("""
+    <head>
+        <!-- Título principal de la tarjeta en WhatsApp -->
+        <meta property="og:title" content="Te lo llevo – Je m'en occupe" />
+        <!-- Descripción secundaria en la tarjeta -->
+        <meta property="og:description" content="Guarda el tiempo para ti | Votre temps est à vous. Servicios y recados cotidianos." />
+        <!-- Tipo de sitio -->
+        <meta property="og:type" content="website" />
+    </head>
+    """, unsafe_allow_html=True)
 
 # --- TRADUCCIONES INTERFAZ (ESPAÑOL / FRANÇAIS) ---
 IDIOMAS = {
@@ -50,9 +63,9 @@ IDIOMAS = {
         "placeholder_nombre": "Ex: Marie Dubois",
         "placeholder_tel": "Ex: +33 6 12 34 56 78",
         "label_nombre": "Nom et Prénom",
-        "label_tel": "Numéro de teléfono 📞",
+        "label_tel": "Numéro de téléphone 📞",
         "section_central": "📞 Ligne de la centrale d'appels",
-        "label_central": "Sélectionnez une línea d'attention :",
+        "label_central": "Sélectionnez une ligne d'attention :",
         "btn_llamar": "📞 APPELER LA CENTRALE (DEMANDE SPÉCIALE)",
         "section_favor": "📝 De quoi avez-vous besoin aujourd'hui ?",
         "label_tipo": "Sélectionnez une option :",
@@ -64,9 +77,9 @@ IDIOMAS = {
             "🛠️ Petite aide à la maison / Bricolage",
             "❓ Autre service (À préciser ci-dessous)"
         ],
-        "label_detalles": "Expliquez-nous les détails de votre demande :",
+        "label_detalles": "Expliquez-nous les detalles de votre demande :",
         "placeholder_detalles": "Ex: J'ai besoin d'acheter du pain, du lait...",
-        "label_dir": "📍 Adresse de livraison o rendez-vous :",
+        "label_dir": "📍 Adresse de livraison ou rendez-vous :",
         "placeholder_dir": "Ex: Rue de la République, Tarascon",
         "btn_enviar": "🚀 ENVOYER LA DEMANDE À LA CENTRALE",
         "error_datos": "⚠️ Veuillez entrer votre nom et votre numéro de téléphone.",
@@ -126,12 +139,12 @@ st.markdown(f"<p class='brand-subtitle'>{textos['subtitle']}</p>", unsafe_allow_
 st.divider()
 
 st.markdown(f"### {textos['section_datos']}")
-nombre_cliente = st.text_input(textos['label_nombre'], placeholder=textos['placeholder_nombre'], key="input_nombre_v3")
-telefono_cliente = st.text_input(textos['label_tel'], placeholder=textos['placeholder_tel'], key="input_tel_v3")
+nombre_cliente = st.text_input(textos['label_nombre'], placeholder=textos['placeholder_nombre'], key="input_nombre_v4")
+telefono_cliente = st.text_input(textos['label_tel'], placeholder=textos['placeholder_tel'], key="input_tel_v4")
 
 st.divider()
 st.markdown(f"### {textos['section_central']}")
-opcion_central = st.selectbox(textos['label_central'], list(CENTRALES.keys()), key="select_central_v3")
+opcion_central = st.selectbox(textos['label_central'], list(CENTRALES.keys()), key="select_central_v4")
 telefono_destino = CENTRALES[opcion_central]
 
 st.write("")
@@ -145,11 +158,11 @@ st.markdown(f"""
 
 st.divider()
 st.markdown(f"### {textos['section_favor']}")
-tipo_favor = st.selectbox(textos['label_tipo'], textos['opciones_favor'], key="select_favor_v3")
-detalles_favor = st.text_area(textos['label_detalles'], placeholder=textos['placeholder_detalles'], key="area_detalles_v3")
-direccion_favor = st.text_input(textos['label_dir'], placeholder=textos['placeholder_dir'], key="input_dir_v3")
+tipo_favor = st.selectbox(textos['label_tipo'], textos['opciones_favor'], key="select_favor_v4")
+detalles_favor = st.text_area(textos['label_detalles'], placeholder=textos['placeholder_detalles'], key="area_detalles_v4")
+direccion_favor = st.text_input(textos['label_dir'], placeholder=textos['placeholder_dir'], key="input_dir_v4")
 
-if st.button(textos['btn_enviar'], key="btn_enviar_v3"):
+if st.button(textos['btn_enviar'], key="btn_enviar_v4"):
     if not nombre_cliente.strip() or not telefono_cliente.strip():
         st.error(textos['error_datos'])
     elif not detalles_favor.strip() or not direccion_favor.strip():

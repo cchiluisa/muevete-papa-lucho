@@ -16,10 +16,11 @@ IDIOMAS = {
         "label_tel": "Tu Teléfono de Contacto 📞 / Numéro de téléphone",
         "section_central": "📞 ¿A qué central deseas enviar tu solicitud? / Quelle ligne?",
         "label_central": "Selecciona una línea de atención / Ligne d'attention :",
+        "btn_llamar": "📞 LLAMAR A LA CENTRAL (PEDIDO ESPECIAL)",
         "section_favor": "📝 ¿Qué favor o recado necesitas? / De quoi avez-vous besoin ?",
         "label_tipo": "Selecciona una opción / Sélectionnez une option :",
         "opciones_favor": [
-            "🛒 Hacer la compra / Supermarchado (Courses)",
+            "🛒 Hacer la compra / Supermercado (Courses)",
             "📦 Recoger o enviar un paquete (Colis)",
             "💊 Ir a la farmacia (Pharmacie)",
             "📄 Gestiones, papeles o recados (Démarches)",
@@ -47,6 +48,7 @@ IDIOMAS = {
         "label_tel": "Numéro de téléphone 📞",
         "section_central": "📞 Ligne de la centrale d'appels",
         "label_central": "Sélectionnez una ligne d'attention :",
+        "btn_llamar": "📞 APPELER LA CENTRALE (DEMANDE SPÉCIALE)",
         "section_favor": "📝 De quoi avez-vous besoin aujourd'hui ?",
         "label_tipo": "Sélectionnez une option :",
         "opciones_favor": [
@@ -129,6 +131,17 @@ st.divider()
 st.markdown(f"### {textos['section_central']}")
 opcion_central = st.selectbox(textos['label_central'], list(CENTRALES.keys()))
 telefono_destino = CENTRALES[opcion_central]
+
+# --- BOTÓN DE LLAMADA TELEFÓNICA DIRECTA (NUEVO) ---
+st.write("")
+st.markdown(f"""
+    <a href="tel:+{telefono_destino}">
+        <button style="width:100%; background-color:#dc2626; color:white; border:none; padding:12px; border-radius:14px; font-weight:bold; font-size:1.05em; cursor:pointer; box-shadow: 0 4px 12px rgba(220,38,38,0.2);">
+            {textos['btn_llamar']}
+        </button>
+    </a>
+""", unsafe_allow_html=True)
+st.write("")
 
 st.divider()
 st.markdown(f"### {textos['section_favor']}")

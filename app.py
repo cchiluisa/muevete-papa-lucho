@@ -13,8 +13,8 @@ IDIOMAS = {
         "placeholder_nombre": "Ej: María Gómez",
         "placeholder_tel": "Ej: +33 6 12 34 56 78",
         "label_nombre": "Tu Nombre y Apellido / Nom et Prénom",
-        "label_tel": "Tu Teléfono de Contacto 📞 / Numéro de téléphone",
-        "section_central": "📞 ¿A qué central deseas enviar tu solicitud? / Quelle ligne?",
+        "label_tel": "Tu Teléfono de Contacto 📞 / Numéro de teléfono",
+        "section_central": "📞 ¿A qué central deseas enviar tu solicitud? / Quelle línea?",
         "label_central": "Selecciona una línea de atención / Ligne d'attention :",
         "btn_llamar": "📞 LLAMAR A LA CENTRAL (PEDIDO ESPECIAL)",
         "section_favor": "📝 ¿Qué favor o recado necesitas? / De quoi avez-vous besoin ?",
@@ -37,7 +37,7 @@ IDIOMAS = {
         "alerta_lista": "✨ ¡Solicitud Lista / Demande Prête !",
         "alerta_desc": "Pulsa el botón de abajo para enviar el recado de forma inmediata a la central por WhatsApp.",
         "btn_whatsapp": "💬 ENVIAR A LA CENTRAL POR WHATSAPP",
-        "encabezado_wa": "🔔 [TE LO LLEVO - NUEVA SOLICITUD]"
+        "encabezado_wa": "TE LO LLEVO - NUEVA SOLICITUD"
     },
     "Français 🇫🇷": {
         "title": "Te lo llevo – Je m'en occupe",
@@ -46,9 +46,9 @@ IDIOMAS = {
         "placeholder_nombre": "Ex: Marie Dubois",
         "placeholder_tel": "Ex: +33 6 12 34 56 78",
         "label_nombre": "Nom et Prénom",
-        "label_tel": "Numéro de téléphone 📞",
+        "label_tel": "Numéro de teléfono 📞",
         "section_central": "📞 Ligne de la centrale d'appels",
-        "label_central": "Sélectionnez une ligne d'attention :",
+        "label_central": "Sélectionnez une línea d'attention :",
         "btn_llamar": "📞 APPELER LA CENTRALE (DEMANDE SPÉCIALE)",
         "section_favor": "📝 De quoi avez-vous besoin aujourd'hui ?",
         "label_tipo": "Sélectionnez une option :",
@@ -70,7 +70,7 @@ IDIOMAS = {
         "alerta_lista": "✨ Demande Prête !",
         "alerta_desc": "Cliquez sur le bouton ci-dessous pour envoyer immédiatement votre demande à la centrale via WhatsApp.",
         "btn_whatsapp": "💬 ENVOYER À LA CENTRALE VIA WHATSAPP",
-        "encabezado_wa": "🔔 [TE LO LLEVO - NOUVELLE DEMANDE]"
+        "encabezado_wa": "TE LO LLEVO - NOUVELLE DEMANDE"
     }
 }
 
@@ -122,12 +122,12 @@ st.markdown(f"<p class='brand-subtitle'>{textos['subtitle']}</p>", unsafe_allow_
 st.divider()
 
 st.markdown(f"### {textos['section_datos']}")
-nombre_cliente = st.text_input(textos['label_nombre'], placeholder=textos['placeholder_nombre'])
-telefono_cliente = st.text_input(textos['label_tel'], placeholder=textos['placeholder_tel'])
+nombre_cliente = st.text_input(textos['label_nombre'], placeholder=textos['placeholder_nombre'], key="input_nombre_v2")
+telefono_cliente = st.text_input(textos['label_tel'], placeholder=textos['placeholder_tel'], key="input_tel_v2")
 
 st.divider()
 st.markdown(f"### {textos['section_central']}")
-opcion_central = st.selectbox(textos['label_central'], list(CENTRALES.keys()))
+opcion_central = st.selectbox(textos['label_central'], list(CENTRALES.keys()), key="select_central_v2")
 telefono_destino = CENTRALES[opcion_central]
 
 st.write("")
@@ -141,17 +141,18 @@ st.markdown(f"""
 
 st.divider()
 st.markdown(f"### {textos['section_favor']}")
-tipo_favor = st.selectbox(textos['label_tipo'], textos['opciones_favor'])
-detalles_favor = st.text_area(textos['label_detalles'], placeholder=textos['placeholder_detalles'])
-direccion_favor = st.text_input(textos['label_dir'], placeholder=textos['placeholder_dir'])
+tipo_favor = st.selectbox(textos['label_tipo'], textos['opciones_favor'], key="select_favor_v2")
+detalles_favor = st.text_area(textos['label_detalles'], placeholder=textos['placeholder_detalles'], key="area_detalles_v2")
+direccion_favor = st.text_input(textos['label_dir'], placeholder=textos['placeholder_dir'], key="input_dir_v2")
 
-if st.button(textos['btn_enviar']):
+if st.button(textos['btn_enviar'], key="btn_enviar_v2"):
     if not nombre_cliente.strip() or not telefono_cliente.strip():
         st.error(textos['error_datos'])
     elif not detalles_favor.strip() or not direccion_favor.strip():
         st.error(textos['error_detalles'])
     else:
-        texto_base = f"{textos['encabezado_wa']}\n\n👤 Client(e): {nombre_cliente}\n📞 Tel: {telefono_cliente}\n📋 Cat: {tipo_favor}\n📝 Details: {detalles_favor}\n📍 Adresse: {direccion_favor}"
+        # Texto limpio sin rastro alguno de la marca anterior
+        texto_base = f"🔔 [{textos['encabezado_wa']}]\n\n👤 Client(e): {nombre_cliente}\n📞 Tel: {telefono_cliente}\n📋 Cat: {tipo_favor}\n📝 Details: {detalles_favor}\n📍 Adresse: {direccion_favor}"
         url_whatsapp = f"https://wa.me/{telefono_destino}?text={urllib.parse.quote(texto_base)}"
         
         st.markdown(f"""
